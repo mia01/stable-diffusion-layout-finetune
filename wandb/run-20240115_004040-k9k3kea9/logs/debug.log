@@ -1,0 +1,27 @@
+2024-01-15 00:40:40,088 INFO    MainThread:37994 [wandb_setup.py:_flush():76] Current SDK version is 0.16.2
+2024-01-15 00:40:40,088 INFO    MainThread:37994 [wandb_setup.py:_flush():76] Configure stats pid to 37994
+2024-01-15 00:40:40,088 INFO    MainThread:37994 [wandb_setup.py:_flush():76] Loading settings from /Users/miav1/.config/wandb/settings
+2024-01-15 00:40:40,088 INFO    MainThread:37994 [wandb_setup.py:_flush():76] Loading settings from /Users/miav1/Desktop/university/2023/github/stable-diffusion-finetune/wandb/settings
+2024-01-15 00:40:40,088 INFO    MainThread:37994 [wandb_setup.py:_flush():76] Loading settings from environment variables: {}
+2024-01-15 00:40:40,089 INFO    MainThread:37994 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2024-01-15 00:40:40,089 INFO    MainThread:37994 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'main.py', 'program_abspath': '/Users/miav1/Desktop/university/2023/github/stable-diffusion-finetune/main.py', 'program': 'main.py'}
+2024-01-15 00:40:40,089 INFO    MainThread:37994 [wandb_init.py:_log_setup():526] Logging user logs to /Users/miav1/Desktop/university/2023/github/stable-diffusion-finetune/wandb/run-20240115_004040-k9k3kea9/logs/debug.log
+2024-01-15 00:40:40,089 INFO    MainThread:37994 [wandb_init.py:_log_setup():527] Logging internal logs to /Users/miav1/Desktop/university/2023/github/stable-diffusion-finetune/wandb/run-20240115_004040-k9k3kea9/logs/debug-internal.log
+2024-01-15 00:40:40,090 INFO    MainThread:37994 [wandb_init.py:init():566] calling init triggers
+2024-01-15 00:40:40,090 INFO    MainThread:37994 [wandb_init.py:init():573] wandb.init called with sweep_config: {}
+config: {}
+2024-01-15 00:40:40,090 INFO    MainThread:37994 [wandb_init.py:init():616] starting backend
+2024-01-15 00:40:40,090 INFO    MainThread:37994 [wandb_init.py:init():620] setting up manager
+2024-01-15 00:40:40,093 INFO    MainThread:37994 [backend.py:_multiprocessing_setup():105] multiprocessing start_methods=spawn,fork,forkserver, using: spawn
+2024-01-15 00:40:40,097 INFO    MainThread:37994 [wandb_init.py:init():628] backend started and connected
+2024-01-15 00:40:40,104 INFO    MainThread:37994 [wandb_init.py:init():720] updated telemetry
+2024-01-15 00:40:40,106 INFO    MainThread:37994 [wandb_init.py:init():753] communicating run to backend with 90.0 second timeout
+2024-01-15 00:40:40,841 INFO    MainThread:37994 [wandb_run.py:_on_init():2254] communicating current version
+2024-01-15 00:40:40,972 INFO    MainThread:37994 [wandb_run.py:_on_init():2263] got version response 
+2024-01-15 00:40:40,972 INFO    MainThread:37994 [wandb_init.py:init():804] starting run threads in backend
+2024-01-15 00:40:46,378 INFO    MainThread:37994 [wandb_run.py:_console_start():2233] atexit reg
+2024-01-15 00:40:46,378 INFO    MainThread:37994 [wandb_run.py:_redirect():2088] redirect: wrap_raw
+2024-01-15 00:40:46,379 INFO    MainThread:37994 [wandb_run.py:_redirect():2153] Wrapping output streams.
+2024-01-15 00:40:46,379 INFO    MainThread:37994 [wandb_run.py:_redirect():2178] Redirects installed.
+2024-01-15 00:40:46,381 INFO    MainThread:37994 [wandb_init.py:init():847] run started, returning control to user process
+2024-01-15 00:40:46,384 INFO    MainThread:37994 [wandb_run.py:_config_callback():1342] config_cb None None {'input_perturbation': 0, 'pretrained_model_name_or_path': 'CompVis/stable-diffusion-v1-4', 'variant': None, 'train_annotation_file': '/Users/miav1/Desktop/university/2023/disseration/datasets/visual genome/data/train_coco_style.json', 'train_caption_file': '/Users/miav1/Desktop/university/2023/disseration/datasets/visual genome/data/train_sg.json', 'image_folder': '/Users/miav1/Desktop/university/2023/disseration/datasets/visual genome/data/images/VG_100K', 'val_annotation_file': '/Users/miav1/Desktop/university/2023/disseration/datasets/visual genome/data/val_coco_style.json', 'val_caption_file': '/Users/miav1/Desktop/university/2023/disseration/datasets/visual genome/data/val_sg.json', 'image_column': 'image', 'caption_column': 'captions', 'max_train_samples': None, 'output_dir': 'sd-model-layout2image-finetuned', 'cache_dir': 'cache/datasets', 'seed': None, 'resolution': 512, 'num_inference_steps': 100, 'train_batch_size': 1, 'num_train_epochs': 100, 'max_train_steps': 6370400, 'gradient_accumulation_steps': 1, 'gradient_checkpointing': False, 'learning_rate': 0.0001, 'scale_lr': False, 'lr_scheduler': 'constant', 'lr_warmup_steps': 500, 'use_8bit_adam': False, 'allow_tf32': False, 'dataloader_num_workers': 0, 'adam_beta1': 0.9, 'adam_beta2': 0.999, 'adam_weight_decay': 0.01, 'adam_epsilon': 1e-08, 'max_grad_norm': 1.0, 'push_to_hub': False, 'hub_token': None, 'prediction_type': None, 'logging_dir': 'logs', 'mixed_precision': 'fp16', 'report_to': 'all', 'local_rank': -1, 'checkpointing_steps': 500, 'checkpoints_total_limit': None, 'resume_from_checkpoint': None, 'noise_offset': 0, 'validation_epochs': 1, 'tracker_project_name': 'layout2image-fine-tune'}

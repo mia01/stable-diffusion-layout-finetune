@@ -1,0 +1,59 @@
+2024-01-15 00:07:58,675 INFO    StreamThr :37031 [internal.py:wandb_internal():86] W&B internal server running at pid: 37031, started at: 2024-01-15 00:07:58.674230
+2024-01-15 00:07:58,680 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: status
+2024-01-15 00:07:58,684 INFO    WriterThread:37031 [datastore.py:open_for_write():87] open: /Users/miav1/Desktop/university/2023/github/stable-diffusion-finetune/wandb/run-20240115_000758-guorjyse/run-guorjyse.wandb
+2024-01-15 00:07:58,689 DEBUG   SenderThread:37031 [sender.py:send():382] send: header
+2024-01-15 00:07:58,689 DEBUG   SenderThread:37031 [sender.py:send():382] send: run
+2024-01-15 00:07:59,166 INFO    SenderThread:37031 [dir_watcher.py:__init__():211] watching files in: /Users/miav1/Desktop/university/2023/github/stable-diffusion-finetune/wandb/run-20240115_000758-guorjyse/files
+2024-01-15 00:07:59,167 INFO    SenderThread:37031 [sender.py:_start_run_threads():1136] run started: guorjyse with start time 1705277278.675295
+2024-01-15 00:07:59,183 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: check_version
+2024-01-15 00:07:59,183 DEBUG   SenderThread:37031 [sender.py:send_request():409] send_request: check_version
+2024-01-15 00:07:59,343 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: run_start
+2024-01-15 00:07:59,352 DEBUG   HandlerThread:37031 [system_info.py:__init__():27] System info init
+2024-01-15 00:07:59,352 DEBUG   HandlerThread:37031 [system_info.py:__init__():42] System info init done
+2024-01-15 00:07:59,352 INFO    HandlerThread:37031 [system_monitor.py:start():194] Starting system monitor
+2024-01-15 00:07:59,353 INFO    HandlerThread:37031 [system_monitor.py:probe():214] Collecting system info
+2024-01-15 00:07:59,354 INFO    SystemMonitor:37031 [system_monitor.py:_start():158] Starting system asset monitoring threads
+2024-01-15 00:07:59,354 DEBUG   HandlerThread:37031 [system_info.py:probe():151] Probing system
+2024-01-15 00:07:59,356 INFO    SystemMonitor:37031 [interfaces.py:start():190] Started cpu monitoring
+2024-01-15 00:07:59,359 INFO    SystemMonitor:37031 [interfaces.py:start():190] Started disk monitoring
+2024-01-15 00:07:59,361 INFO    SystemMonitor:37031 [interfaces.py:start():190] Started memory monitoring
+2024-01-15 00:07:59,363 INFO    SystemMonitor:37031 [interfaces.py:start():190] Started network monitoring
+2024-01-15 00:07:59,371 DEBUG   HandlerThread:37031 [gitlib.py:_init_repo():56] git repository is invalid
+2024-01-15 00:07:59,371 DEBUG   HandlerThread:37031 [system_info.py:probe():199] Probing system done
+2024-01-15 00:07:59,371 DEBUG   HandlerThread:37031 [system_monitor.py:probe():223] {'os': 'macOS-10.15.7-x86_64-i386-64bit', 'python': '3.10.13', 'heartbeatAt': '2024-01-15T00:07:59.355514', 'startedAt': '2024-01-15T00:07:58.659632', 'docker': None, 'cuda': None, 'args': (), 'state': 'running', 'program': 'main.py', 'codePathLocal': 'main.py', 'codePath': 'main.py', 'host': 'suemayahs-mbp.lan', 'username': 'miav1', 'executable': '/Users/miav1/miniconda3/envs/sdtf/bin/python', 'cpu_count': 8, 'cpu_count_logical': 16, 'cpu_freq': {'current': 2300, 'min': 2300, 'max': 2300}, 'cpu_freq_per_core': [{'current': 2300, 'min': 2300, 'max': 2300}], 'disk': {'/': {'total': 931.546989440918, 'used': 10.466056823730469}}, 'memory': {'total': 16.0}}
+2024-01-15 00:07:59,371 INFO    HandlerThread:37031 [system_monitor.py:probe():224] Finished collecting system info
+2024-01-15 00:07:59,371 INFO    HandlerThread:37031 [system_monitor.py:probe():227] Publishing system info
+2024-01-15 00:07:59,372 DEBUG   HandlerThread:37031 [system_info.py:_save_conda():208] Saving list of conda packages installed into the current environment
+2024-01-15 00:08:00,174 INFO    Thread-17 :37031 [dir_watcher.py:_on_file_created():271] file/dir created: /Users/miav1/Desktop/university/2023/github/stable-diffusion-finetune/wandb/run-20240115_000758-guorjyse/files/conda-environment.yaml
+2024-01-15 00:08:04,691 DEBUG   HandlerThread:37031 [system_info.py:_save_conda():220] Saving conda packages done
+2024-01-15 00:08:04,693 INFO    HandlerThread:37031 [system_monitor.py:probe():229] Finished publishing system info
+2024-01-15 00:08:04,700 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: status_report
+2024-01-15 00:08:04,700 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: keepalive
+2024-01-15 00:08:04,701 DEBUG   SenderThread:37031 [sender.py:send():382] send: files
+2024-01-15 00:08:04,701 INFO    SenderThread:37031 [sender.py:_save_file():1403] saving file wandb-metadata.json with policy now
+2024-01-15 00:08:04,712 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: python_packages
+2024-01-15 00:08:04,712 DEBUG   SenderThread:37031 [sender.py:send_request():409] send_request: python_packages
+2024-01-15 00:08:04,720 DEBUG   SenderThread:37031 [sender.py:send():382] send: telemetry
+2024-01-15 00:08:04,726 DEBUG   SenderThread:37031 [sender.py:send():382] send: config
+2024-01-15 00:08:04,729 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: internal_messages
+2024-01-15 00:08:04,730 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: stop_status
+2024-01-15 00:08:04,734 DEBUG   SenderThread:37031 [sender.py:send_request():409] send_request: stop_status
+2024-01-15 00:08:05,180 INFO    Thread-17 :37031 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/miav1/Desktop/university/2023/github/stable-diffusion-finetune/wandb/run-20240115_000758-guorjyse/files/conda-environment.yaml
+2024-01-15 00:08:05,180 INFO    Thread-17 :37031 [dir_watcher.py:_on_file_created():271] file/dir created: /Users/miav1/Desktop/university/2023/github/stable-diffusion-finetune/wandb/run-20240115_000758-guorjyse/files/output.log
+2024-01-15 00:08:05,180 INFO    Thread-17 :37031 [dir_watcher.py:_on_file_created():271] file/dir created: /Users/miav1/Desktop/university/2023/github/stable-diffusion-finetune/wandb/run-20240115_000758-guorjyse/files/requirements.txt
+2024-01-15 00:08:05,181 INFO    Thread-17 :37031 [dir_watcher.py:_on_file_created():271] file/dir created: /Users/miav1/Desktop/university/2023/github/stable-diffusion-finetune/wandb/run-20240115_000758-guorjyse/files/wandb-metadata.json
+2024-01-15 00:08:05,324 INFO    wandb-upload_0:37031 [upload_job.py:push():131] Uploaded file /var/folders/yy/57q0npbn70z34z8zndlby78w0000gn/T/tmpd8uh8u49wandb/l36675bt-wandb-metadata.json
+2024-01-15 00:08:07,186 INFO    Thread-17 :37031 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/miav1/Desktop/university/2023/github/stable-diffusion-finetune/wandb/run-20240115_000758-guorjyse/files/output.log
+2024-01-15 00:08:09,990 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: status_report
+2024-01-15 00:08:15,005 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: status_report
+2024-01-15 00:08:19,717 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: stop_status
+2024-01-15 00:08:19,717 DEBUG   SenderThread:37031 [sender.py:send_request():409] send_request: stop_status
+2024-01-15 00:08:19,722 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: internal_messages
+2024-01-15 00:08:21,004 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: status_report
+2024-01-15 00:08:26,010 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: status_report
+2024-01-15 00:08:31,026 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: status_report
+2024-01-15 00:08:31,262 INFO    Thread-17 :37031 [dir_watcher.py:_on_file_modified():288] file/dir modified: /Users/miav1/Desktop/university/2023/github/stable-diffusion-finetune/wandb/run-20240115_000758-guorjyse/files/config.yaml
+2024-01-15 00:08:34,718 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: stop_status
+2024-01-15 00:08:34,719 DEBUG   SenderThread:37031 [sender.py:send_request():409] send_request: stop_status
+2024-01-15 00:08:34,722 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: internal_messages
+2024-01-15 00:08:37,060 DEBUG   HandlerThread:37031 [handler.py:handle_request():146] handle_request: status_report

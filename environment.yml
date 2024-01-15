@@ -1,0 +1,20 @@
+name: sdtf
+channels:
+  - pytorch
+  - defaults
+  - anaconda
+  - conda-forge
+dependencies:
+  - python=3.10  # or any version you prefer
+  - diffusers
+  - accelerate
+  - transformers
+  - wandb
+  - torchvision
+  - functorch
+  - more-itertools
+  - datasets
+  - einops
+  - pip:
+    - bitsandbytes
+    - torch

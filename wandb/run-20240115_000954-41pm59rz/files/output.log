@@ -1,0 +1,29 @@
+01/15/2024 00:10:00 - INFO - __main__ - ***** Running training *****
+01/15/2024 00:10:00 - INFO - __main__ -   Num examples = 63704
+01/15/2024 00:10:00 - INFO - __main__ -   Num Epochs = 100
+01/15/2024 00:10:00 - INFO - __main__ -   Instantaneous batch size per device = 1
+01/15/2024 00:10:00 - INFO - __main__ -   Total train batch size (w. parallel, distributed & accumulation) = 1
+01/15/2024 00:10:00 - INFO - __main__ -   Gradient Accumulation steps = 1
+01/15/2024 00:10:00 - INFO - __main__ -   Total optimization steps = 6370400
+Steps:   0%|                                                                                                                                   | 0/6370400 [00:00<?, ?it/s]Traceback (most recent call last):
+  File "/Users/miav1/miniconda3/envs/sdtf/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/Users/miav1/miniconda3/envs/sdtf/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/Users/miav1/.vscode/extensions/ms-python.python-2023.22.1/pythonFiles/lib/python/debugpy/adapter/../../debugpy/launcher/../../debugpy/__main__.py", line 39, in <module>
+    cli.main()
+  File "/Users/miav1/.vscode/extensions/ms-python.python-2023.22.1/pythonFiles/lib/python/debugpy/adapter/../../debugpy/launcher/../../debugpy/../debugpy/server/cli.py", line 430, in main
+    run()
+  File "/Users/miav1/.vscode/extensions/ms-python.python-2023.22.1/pythonFiles/lib/python/debugpy/adapter/../../debugpy/launcher/../../debugpy/../debugpy/server/cli.py", line 284, in run_file
+    runpy.run_path(target, run_name="__main__")
+  File "/Users/miav1/.vscode/extensions/ms-python.python-2023.22.1/pythonFiles/lib/python/debugpy/_vendored/pydevd/_pydevd_bundle/pydevd_runpy.py", line 321, in run_path
+    return _run_module_code(code, init_globals, run_name,
+  File "/Users/miav1/.vscode/extensions/ms-python.python-2023.22.1/pythonFiles/lib/python/debugpy/_vendored/pydevd/_pydevd_bundle/pydevd_runpy.py", line 135, in _run_module_code
+    _run_code(code, mod_globals, init_globals,
+  File "/Users/miav1/.vscode/extensions/ms-python.python-2023.22.1/pythonFiles/lib/python/debugpy/_vendored/pydevd/_pydevd_bundle/pydevd_runpy.py", line 124, in _run_code
+    exec(code, run_globals)
+  File "main.py", line 585, in <module>
+    main()
+  File "main.py", line 375, in main
+    log_validation(accelerator, val_image_dataloader, {"vae":vae,
+TypeError: log_validation() missing 2 required positional arguments: 'num_inference_steps' and 'output_dir'
