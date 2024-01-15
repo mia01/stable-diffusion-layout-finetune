@@ -1,10 +1,13 @@
 import torch
 from diffusers import StableDiffusionPipeline
+from accelerate.logging import get_logger
 
 def run_inference_with_pipeline(accelerator, val_batch, pretrained_model_name_or_path: str, unet,seed:int = None, num_inference_steps:int = 100):
+    logger = get_logger(__name__, log_level="INFO")
+    logger.info(f"Running inference pipeline with {num_inference_steps} steps... ")
+  
     unet = accelerator.unwrap_model(unet)
-    # if args.use_ema:
-    #     ema_unet.copy_to(unet.parameters())
+    
 
     pipeline = StableDiffusionPipeline.from_pretrained(
         pretrained_model_name_or_path

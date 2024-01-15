@@ -238,15 +238,22 @@ def main():
         raw_data = [example for example in examples]
         return {"pixel_values": pixel_values,  "bounding_boxes": bounding_boxes, "input_ids": input_ids, "raw_data":raw_data }
 
+    if args.max_train_samples is not None:
+      from torch.utils.data import DataLoader, SubsetRandomSampler
 
-    # DataLoaders creation:
-    train_dataloader = torch.utils.data.DataLoader(
-        train_dataset,
-        shuffle=True,
-        collate_fn=collate_fn,
-        batch_size=args.train_batch_size,
-        num_workers=args.dataloader_num_workers,
-    )
+      K = args.max_train_samples
+      subsample_train_indices = torch.randperm(len(train_dataset))[:K]
+      train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, sampler=SubsetRandomSampler(subsample_train_indices)) 
+    
+    else: 
+      # DataLoaders creation:
+      train_dataloader = torch.utils.data.DataLoader(
+          train_dataset,
+          shuffle=True,
+          collate_fn=collate_fn,
+          batch_size=args.train_batch_size,
+          num_workers=args.dataloader_num_workers,
+      )
 
     val_dataloader = torch.utils.data.DataLoader(
             validation_dataset,
@@ -265,10 +272,6 @@ def main():
             num_workers=args.dataloader_num_workers,
         )
     
-    with accelerator.main_process_first():
-        if args.max_train_samples is not None:
-            train_dataset = train_dataset.shuffle(seed=args.seed).select(range(args.max_train_samples))
-            validation_dataset = validation_dataset.shuffle(seed=args.seed).select(range(args.max_train_samples))
 
     # Scheduler and math around the number of training steps.
     overrode_max_train_steps = False
@@ -305,8 +308,8 @@ def main():
         args.mixed_precision = accelerator.mixed_precision
 
     # Move text_encode and vae to gpu and cast to weight_dtype
-    text_encoder.to(accelerator.device, dtype=weight_dtype)
-    vae.to(accelerator.device, dtype=weight_dtype)
+    text_encoder = text_encoder.to(accelerator.device, dtype=weight_dtype)
+    vae = vae.to(accelerator.device, dtype=weight_dtype)
 
     # We need to recalculate our total training steps as the size of the training dataloader may have changed.
     num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
@@ -377,6 +380,7 @@ def main():
         
         # TODO: Log Validation Images if first step in epoch (as baseline)
         if epoch == 0:
+            logger.info(f"Epoch: {epoch} Logging Validation images")
             log_validation(accelerator, val_image_dataloader, {"vae":vae,
                     "text_encoder": text_encoder,
                     "unet": unet, 
@@ -391,7 +395,7 @@ def main():
                 latents = vae.encode(batch["pixel_values"].to(weight_dtype)).latent_dist.sample()
                 latents = latents * vae.config.scaling_factor
 
-                print("Encoded image latents")
+                logger.info(f"Epoch: {epoch} step: {step} Encoded image latents")
                 # Sample noise that we'll add to the latents
                 noise = torch.randn_like(latents)
                 if args.noise_offset:
@@ -413,18 +417,18 @@ def main():
                     noisy_latents = noise_scheduler.add_noise(latents, new_noise, timesteps)
                 else:
                     noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
-                print("Added noise to latents")
+                logger.info(f"Epoch: {epoch} step: {step} Added noise to latents")
                 
                 # Get the text embedding for conditioning
                 encoder_hidden_states = text_encoder(batch["input_ids"])[0]
-                print("Got text condition")
+                logger.info(f"Epoch: {epoch} step: {step}Got text condition")
 
                 # Add layout embedding and concatenate with text embedding
-                batch["bounding_boxes"].to(accelerator.device)
+                batch["bounding_boxes"] = batch["bounding_boxes"].to(accelerator.device)
                 layout_conditioning = get_layout_conditioning(layout_embedder, batch["bounding_boxes"])
                 layout_conditioning.to(accelerator.device)
                 encoder_hidden_states.to(accelerator.device)
-                print("Got bbox condition")
+                logger.info(f"Epoch: {epoch} step: {step} Got bbox condition")
 
                 # TODO experiment with and without concatenating with text
                 # Concatenate embeddings
@@ -441,12 +445,11 @@ def main():
                     target = noise_scheduler.get_velocity(latents, noise, timesteps)
                 else:
                     raise ValueError(f"Unknown prediction type {noise_scheduler.config.prediction_type}")
-                print(f"Created noise schedule with prediction_type {noise_scheduler.config.prediction_type}")
+                logger.info(f"Epoch: {epoch} step: {step} Created noise schedule with prediction_type {noise_scheduler.config.prediction_type}")
 
                 # Predict the noise residual and compute loss
                 model_pred = unet(noisy_latents, timesteps, condition).sample
-
-                print("Unet processed batch")
+                
                 if args.snr_gamma is None: # TODO: this is None by default check if should be removed
                     loss = functional.mse_loss(model_pred.float(), target.float(), reduction="mean")
                 # else:
@@ -472,6 +475,8 @@ def main():
 
                 # Backpropagate
                 accelerator.backward(loss)
+                logger.info(f"Epoch: {epoch} step: {step} Backward propogation")
+
                 if accelerator.sync_gradients:
                     accelerator.clip_grad_norm_(unet.parameters(), args.max_grad_norm)
                 optimizer.step()
@@ -487,6 +492,7 @@ def main():
                 train_loss = 0.0
 
                 if global_step % args.checkpointing_steps == 0:
+                    logger.info(f"Epoch: {epoch} step: {step} Saving checkpoint")
                     if accelerator.is_main_process:
                         # _before_ saving state, check if this save would set us over the `checkpoints_total_limit`
                         if args.checkpoints_total_limit is not None:
@@ -514,7 +520,7 @@ def main():
                         accelerator.register_for_checkpointing(layout_embedder)
                         accelerator.save_state(save_path)
 
-                        logger.info(f"Saved state to {save_path}")
+                        logger.info(f"Epoch: {epoch} step: {step} Saved checkpoint state to {save_path}")
 
             logs = {"step_loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             progress_bar.set_postfix(**logs)
@@ -523,9 +529,12 @@ def main():
                 break
 
         if accelerator.is_main_process:
-            if args.validation_prompts is not None and epoch % args.validation_epochs == 0:
+            if epoch % args.validation_epochs == 0:
                     
+                logger.info(f"Epoch: {epoch} step: {step} Running validation loss")
                 validation_step(accelerator, val_dataloader, pipeline, epoch, global_step)
+
+                logger.info(f"Epoch: {epoch} step: {step} Running validation inference")
                 log_validation(accelerator, val_image_dataloader, {"vae":vae,
                     "text_encoder": text_encoder,
                     "unet": unet, 

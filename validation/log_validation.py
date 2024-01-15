@@ -10,7 +10,8 @@ from inference.run_inference import run_inference
 from utils.save_progress import log_validation_image, save_captions_to_file, save_layouts
 import wandb
 from utils.helpers import convert_pil_to_tensor
-
+import torch
+from torchvision import transforms
 class ModelComponents(TypedDict):
     vae: nn.Module
     text_encoder: nn.Module
@@ -18,6 +19,19 @@ class ModelComponents(TypedDict):
     layout_embedder: nn.Module
     noise_scheduler: nn.Module
     tokenizer: nn.Module
+
+def convert_pil_list_to_tensor(pil_list):
+
+    # Define a transform to convert PIL images to tensors
+    transform = transforms.ToTensor()
+
+    # Apply the transform to each image and store the results in a list
+    tensors = [transform(image) for image in pil_list]
+
+    # Stack all tensors into a single tensor
+    tensor_stack = torch.stack(tensors)
+
+    return tensor_stack
 
 
 def log_validation(accelerator, val_dataloader, model_components: ModelComponents,
@@ -47,11 +61,15 @@ def log_validation(accelerator, val_dataloader, model_components: ModelComponent
     images = []
    
     with torch.autocast("cuda"):
+        logger.info(f"Epoch: {epoch} Running inference with text condition only and pretrained pipeline")
+        unconditioned_images_with_pipeline = run_inference_with_pipeline(accelerator, val_batch, "CompVis/stable-diffusion-v1-4", model_components["unet"], seed, num_inference_steps)
+
+        logger.info(f"Epoch: {epoch} Running inference with layout and text condition")
         images = run_inference(accelerator, val_batch, model_components, seed, num_inference_steps)
         
+        logger.info(f"Epoch: {epoch} Running inference with text condition only")
         unconditioned_images = run_inference(accelerator, val_batch, model_components, seed, num_inference_steps)
 
-        unconditioned_images_with_pipeline = run_inference_with_pipeline(accelerator, val_batch, "CompVis/stable-diffusion-v1-4", model_components["unet"], seed, num_inference_steps)
     for tracker in accelerator.trackers:
         if tracker.name == "tensorboard":
             # np_images = np.stack([np.asarray(img) for img in images]) caused error: can't convert cuda:0 device type tensor to numpy. Use Tensor.cpu() to copy the tensor to host memory first.
@@ -110,10 +128,12 @@ def log_validation(accelerator, val_dataloader, model_components: ModelComponent
             logger.warn(f"image logging not implemented for {tracker.name}")
 
     # Save layout conditions
+    logger.info(f"Epoch: {epoch} Logging inference images")
     log_validation_image(val_batch["pixel_values"], epoch, global_step, output_dir, "val_image")
     log_validation_image(images, epoch, global_step, output_dir, "cond_image")
     log_validation_image(unconditioned_images, epoch, global_step, output_dir, "uncond_image")
-    log_validation_image(convert_pil_to_tensor(unconditioned_images_with_pipeline), epoch, global_step, output_dir, "uncond_image_pipeline")
+    log_validation_image(convert_pil_list_to_tensor(unconditioned_images_with_pipeline), epoch, global_step, output_dir, "uncond_image_pipeline")
+
 
 
     torch.cuda.empty_cache()
