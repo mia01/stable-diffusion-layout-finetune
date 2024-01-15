@@ -236,4 +236,19 @@ class ObjectsBoundingBoxConditionalBuilder(ObjectsCenterPointsConditionalBuilder
             draw.text((bbox[0] + line_width, bbox[1] + line_width), class_label, anchor='la', fill=BLACK)#, font=font)
         if crop_coordinates is not None:
             draw.rectangle(absolute_bbox(crop_coordinates, width, height), outline=GRAY_75, width=line_width)
+            draw.text((crop_coordinates[0] + line_width, crop_coordinates[1] + line_width), "CROP", anchor='la', fill=GRAY_75)#, font=font)
         return convert_pil_to_tensor(plot) / 127.5 - 1.
+    
+    def get_bounding_boxes_from_condition(self, width, height, conditional: LongTensor) -> Tensor:
+       
+        description, crop_coordinates = self.inverse_build(conditional)
+        bbox_list = []
+        crop_bbox = None
+        for (representation, bbox) in description:
+            annotation = self.representation_to_annotation(representation)
+            bbox = absolute_bbox(bbox, width, height)
+            bbox_list.append((annotation.category_no, bbox))
+        # TODO fix this bug so I can display on original images
+        # if crop_coordinates is not None:
+        #     crop_bbox = absolute_bbox(crop_coordinates, width, height)
+        return crop_bbox, bbox_list 

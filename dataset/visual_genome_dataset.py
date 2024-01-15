@@ -101,6 +101,7 @@ class VisualGenomeBase(Dataset):
             for key in transform.keys():
                 if key == "cropped_image":
                     crop_bbox, image = transform[key](image)
+                    results["cropped_image"] = image
                     results["crop_bounding_box"] = crop_bbox
                 elif key == "flipped_image":
                     flipped, image = transform[key](image)
@@ -166,6 +167,12 @@ class VisualGenomeBase(Dataset):
         category_ids.sort()
         category_number = {i:category_id for i, category_id in enumerate(category_ids)}
         return category_number
+    
+    def category_id_to_name_dict(self):
+        return {int(category_id): self.categories[category_id].name for category_id in self.categories.keys()}
+    
+    def category_no_to_name_dict(self):
+        return {int(category_no): self.categories[category_id].name for category_no, category_id in self.get_category_no_to_id_dict().items()}
     
     def load_annotations(self, annotations_json: List[Dict], image_descriptions, category_id_to_number_dict, split: str) -> Dict[str, List[Annotation]]:
         annotations = defaultdict(list)

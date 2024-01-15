@@ -15,11 +15,11 @@ def run_inference_with_pipeline(accelerator, val_batch, pretrained_model_name_or
     else:
         generator = torch.manual_seed(seed)
 
-    pipeline.set_progress_bar_config(disable=True)
+    pipeline.set_progress_bar_config(disable=False)
     images = []
-    for input_id in val_batch["input_ids"]:
+    for data in val_batch["raw_data"]:
         with torch.autocast("cuda"):
-            image = pipeline(input_id, num_inference_steps=num_inference_steps, generator=generator).images[0]
+            image = pipeline(data["captions"][0], num_inference_steps=num_inference_steps, generator=generator).images[0]
         images.append(image)
 
     with torch.autocast("cuda"):
