@@ -1,7 +1,7 @@
 import os
 from dataset.helpers import get_layout_conditioning
 from dataset.visual_genome_dataset import VisualGenomeTrain, VisualGenomeValidation
-from embedders.layout_embedder import LayoutEmbedder
+from embedders.layout_embedder import LayoutEmbedder, LayoutEmbedderConfig, LayoutEmbedderModel
 from parse_args import parse_args
 import logging
 import math
@@ -83,6 +83,8 @@ def main():
     unet = UNet2DConditionModel.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="unet"
     )
+    # layout_embedder_config = LayoutEmbedderConfig()
+    # layout_embedder = LayoutEmbedderModel(layout_embedder_config, device=accelerator.device)
     layout_embedder = LayoutEmbedder(device=accelerator.device)
 
     def deepspeed_zero_init_disabled_context_manager():
@@ -147,7 +149,7 @@ def main():
                     del load_model
 
             accelerator.register_save_state_pre_hook(save_model_hook)
-            accelerator.register_load_state_pre_hook(load_model_hook)
+            accelerator.register_load_state_pre_hook(load_model_hook) # runs before load_state
 
         if args.gradient_checkpointing:
             unet.enable_gradient_checkpointing()
@@ -359,6 +361,7 @@ def main():
                 args.resume_from_checkpoint = None
                 initial_global_step = 0
             else:
+                # TODO - load unet and layout embedder correctly and also set epoch and step
                 accelerator.print(f"Resuming from checkpoint {path}")
                 accelerator.load_state(os.path.join(args.output_dir, path))
                 global_step = int(path.split("-")[1])
@@ -547,52 +550,29 @@ def main():
                     
 
         # Create the pipeline using the trained modules and save it.
-        # TODO - amend to include the layout embedder
+        # TODO - amend to include the layout embedder - needs testing
         accelerator.wait_for_everyone()
         if accelerator.is_main_process:
             unet = accelerator.unwrap_model(unet)
+            layout_embedder = accelerator.unwrap_model(layout_embedder)
             
 
-            pipeline = StableDiffusionPipeline.from_pretrained(
-                args.pretrained_model_name_or_path,
-                text_encoder=text_encoder,
-                vae=vae,
-                unet=unet,
-                revision=args.revision,
-                variant=args.variant,
-            )
-            pipeline.save_pretrained(args.output_dir)
+           
+            unet.save_pretrained(args.output_dir)
+            layout_embedder.save_pretrained(args.output_dir)
 
             # Run a final round of inference.
-            images = []
             if args.validation_prompts is not None:
-                logger.info("Running inference for collecting generated images...")
-                pipeline = pipeline.to(accelerator.device)
-                pipeline.torch_dtype = weight_dtype
-                pipeline.set_progress_bar_config(disable=True)
+                logger.info("Running final inference for collecting generated images...")
 
-                if args.enable_xformers_memory_efficient_attention:
-                    pipeline.enable_xformers_memory_efficient_attention()
-
-                if args.seed is None:
-                    generator = None
-                else:
-                    generator = torch.Generator(device=accelerator.device).manual_seed(args.seed)
-
-                for i in range(len(args.validation_prompts)):
-                    with torch.autocast("cuda"):
-                        image = pipeline(args.validation_prompts[i], num_inference_steps=100, generator=generator).images[0]
-                    images.append(image)
-
-            # if args.push_to_hub:
-                # push to hub false
-                # save_model_card(args, repo_id, images, repo_folder=args.output_dir)
-                # upload_folder(
-                #     repo_id=repo_id,
-                #     folder_path=args.output_dir,
-                #     commit_message="End of training",
-                #     ignore_patterns=["step_*", "epoch_*"],
-                # )
+                log_validation(accelerator, val_image_dataloader, {"vae":vae,
+                        "text_encoder": text_encoder,
+                        "unet": unet, 
+                        "layout_embedder": layout_embedder,
+                        "noise_scheduler": noise_scheduler,
+                        "tokenizer": tokenizer
+                    }, epoch, global_step,args.seed, args.num_inference_steps, args.output_dir) 
+                    
 
         accelerator.end_training()
 

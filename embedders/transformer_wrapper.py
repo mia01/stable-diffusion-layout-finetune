@@ -3,10 +3,11 @@ from torch import nn
 import torch
 from embedders.attention.attention_layer import AbsolutePositionalEmbedding, AttentionLayers
 import torch.nn.functional as functional
+from huggingface_hub import PyTorchModelHubMixin
 
 from utils.helpers import default, exists
 
-class TransformerWrapper(nn.Module):
+class TransformerWrapper(nn.Module, PyTorchModelHubMixin):
     def __init__(
             self,
             *,
