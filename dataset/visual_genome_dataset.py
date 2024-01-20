@@ -63,7 +63,7 @@ class VisualGenomeBase(Dataset):
         image_data['annotations'] = self.annotations[image_id]
 
         # load image
-        image_data["original_image"] = load_image_from_disk(f"{self.images_folder}/{image_id}.jpg")
+        image_data["original_image"] = load_image_from_disk(image_id, f"{self.images_folder}/{image_id}.jpg")
         image_data["tensor_image"] = convert_pil_to_tensor(image_data["original_image"] )
         # sample['image'].permute(1, 2, 0) - do we need this??
 

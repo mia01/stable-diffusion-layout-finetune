@@ -1,7 +1,9 @@
 """shout-out to https://github.com/lucidrains/x-transformers/tree/main/x_transformers"""
 import json
+import os
 from pathlib import Path
 import warnings
+import requests
 import torch
 from functools import partial
 from inspect import isfunction
@@ -61,8 +63,17 @@ def groupby_prefix_and_trim(prefix, d):
     kwargs_without_prefix = dict(map(lambda x: (x[0][len(prefix):], x[1]), tuple(kwargs_with_prefix.items())))
     return kwargs_without_prefix, kwargs
 
-def load_image_from_disk(path: Path):
-    return pil_image.open(path).convert('RGB')
+def load_image_from_disk(image_id , path: Path):
+    # if not exists download from url
+    if os.path.exists(path):
+        return pil_image.open(path).convert('RGB')
+    else:
+        img_url = f"https://cs.stanford.edu/people/rak248/VG_100K_2/{image_id}.jpg"
+        with open(path, 'wb') as f:
+            f.write(requests.get(img_url).content)
+
+        return pil_image.open(path).convert('RGB')
+
 
 def load_json(file_path):
     with open(file_path, 'r') as f:
