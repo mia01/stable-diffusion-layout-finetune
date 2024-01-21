@@ -83,9 +83,9 @@ def main():
     unet = UNet2DConditionModel.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="unet"
     )
-    # layout_embedder_config = LayoutEmbedderConfig()
-    # layout_embedder = LayoutEmbedderModel(layout_embedder_config, device=accelerator.device)
-    layout_embedder = LayoutEmbedder(device=accelerator.device)
+    layout_embedder_config = LayoutEmbedderConfig()
+    layout_embedder = LayoutEmbedderModel(layout_embedder_config, device=accelerator.device)
+    # layout_embedder = LayoutEmbedder(device=accelerator.device)
 
     def deepspeed_zero_init_disabled_context_manager():
         """
@@ -119,6 +119,7 @@ def main():
         vae.requires_grad_(False)
         text_encoder.requires_grad_(False)
         unet.train()
+        layout_embedder.train()
 
         # TODO - check if enable_xformers_memory_efficient_attention is needed
 
@@ -142,8 +143,13 @@ def main():
                     model = models.pop()
 
                     # load diffusers style into model
-                    load_model = UNet2DConditionModel.from_pretrained(input_dir, subfolder="unet")
-                    model.register_to_config(**load_model.config)
+                    
+                    if model.__class__.__name__ == "LayoutEmbedderModel":
+                        load_model = LayoutEmbedderModel.from_pretrained(input_dir, subfolder=model.__class__.__name__)
+                        # model.register_to_config(**load_model.config)
+                    else:
+                        load_model = UNet2DConditionModel.from_pretrained(input_dir, subfolder=model.__class__.__name__)
+                        model.register_to_config(**load_model.config)
 
                     model.load_state_dict(load_model.state_dict())
                     del load_model
@@ -364,7 +370,7 @@ def main():
                 # TODO - load unet and layout embedder correctly and also set epoch and step
                 accelerator.print(f"Resuming from checkpoint {path}")
                 accelerator.load_state(os.path.join(args.output_dir, path))
-                global_step = int(path.split("-")[1])
+                global_step = int(path.split("-")[2])
 
                 initial_global_step = global_step
                 first_epoch = global_step // num_update_steps_per_epoch
@@ -386,13 +392,13 @@ def main():
             # TODO: Log Validation Images if first step in epoch (as baseline)
             if epoch == 0:
                 logger.info(f"Epoch: {epoch} Logging Validation images")
-                log_validation(accelerator, val_image_dataloader, {"vae":vae,
-                        "text_encoder": text_encoder,
-                        "unet": unet, 
-                        "layout_embedder": layout_embedder,
-                        "noise_scheduler": noise_scheduler,
-                        "tokenizer": tokenizer
-                    }, epoch, global_step,args.seed, args.num_inference_steps, args.output_dir) # should I use args.num_inference_steps here?
+                # log_validation(accelerator, val_image_dataloader, {"vae":vae,
+                #         "text_encoder": text_encoder,
+                #         "unet": unet, 
+                #         "layout_embedder": layout_embedder,
+                #         "noise_scheduler": noise_scheduler,
+                #         "tokenizer": tokenizer
+                #     }, epoch, global_step,args.seed, args.num_inference_steps, args.output_dir) # should I use args.num_inference_steps here?
             logger.info(f"Epoch: {epoch} starting the training steps")
             for step, batch in enumerate(train_dataloader):
                 with accelerator.accumulate(unet):
@@ -522,7 +528,7 @@ def main():
                             save_path = os.path.join(args.output_dir, f"checkpoint-{epoch}-{global_step}")
 
                             # TODO save the transformer for the layout data
-                            accelerator.register_for_checkpointing(layout_embedder)
+                            # accelerator.register_for_checkpointing(layout_embedder)
                             accelerator.save_state(save_path)
 
                             logger.info(f"Epoch: {epoch} step: {step} Saved checkpoint state to {save_path}")
@@ -534,7 +540,7 @@ def main():
                     break
 
             if accelerator.is_main_process:
-                if epoch % args.validation_epochs == 0:
+                if epoch % args.validation_epochs == 0 or steps == args.validation_steps:
                         
                     logger.info(f"Epoch: {epoch} step: {step} Running validation loss")
                     validation_step(accelerator, val_dataloader, pipeline, epoch, global_step)
