@@ -555,15 +555,23 @@ def main():
         if accelerator.is_main_process:
             unet = accelerator.unwrap_model(unet)
             layout_embedder = accelerator.unwrap_model(layout_embedder)
-            
-
-           
             unet.save_pretrained(args.output_dir)
             layout_embedder.save_pretrained(args.output_dir)
 
             # Run a final round of inference.
             if args.validation_prompts is not None:
                 logger.info("Running final inference for collecting generated images...")
+                pipeline = StableDiffusionPipeline.from_pretrained(
+                    args.pretrained_model_name_or_path,
+                    text_encoder=text_encoder,
+                    vae=vae,
+                    unet=unet,
+                    revision=args.revision,
+                    variant=args.variant,
+                )
+                pipeline = pipeline.to(accelerator.device)
+                pipeline.torch_dtype = weight_dtype
+                pipeline.set_progress_bar_config(disable=False)
 
                 log_validation(accelerator, val_image_dataloader, {"vae":vae,
                         "text_encoder": text_encoder,
