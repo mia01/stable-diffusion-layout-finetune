@@ -68,7 +68,7 @@ def log_validation(accelerator, val_dataloader, model_components: ModelComponent
         images = run_inference(accelerator, val_batch, model_components, seed, num_inference_steps)
         
         logger.info(f"Epoch: {epoch} Running inference with text condition only")
-        unconditioned_images = run_inference(accelerator, val_batch, model_components, seed, num_inference_steps)
+        unconditioned_images = run_inference(accelerator, val_batch, model_components, seed, num_inference_steps, True)
 
     for tracker in accelerator.trackers:
         if tracker.name == "tensorboard":
