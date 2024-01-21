@@ -119,7 +119,7 @@ def log_validation(accelerator, val_dataloader, model_components: ModelComponent
             tracker.log(
                 {
                     "unconditioned_validation_images": [
-                        wandb.Image(unconditioned_images, caption=f"{i}: {captions[i]}")
+                        wandb.Image(image, caption=f"{i}: {captions[i]}")
                         for i, image in enumerate(unconditioned_images)
                     ]
                 }
