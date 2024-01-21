@@ -76,8 +76,9 @@ def run_inference(accelerator, inputs, pipeline_components: PipelineComponents, 
       # compute the previous noisy sample x_t -> x_t-1
       latents = pipeline_components["noise_scheduler"].step(noise_pred, t, latents).prev_sample
 
-      # scale and decode the image latents with vae
-      latents = 1 / pipeline_components["vae"].config.scaling_factor * latents  # see https://github.com/huggingface/diffusers/issues/726
+    
+    # scale and decode the image latents with vae
+    latents = 1 / pipeline_components["vae"].config.scaling_factor * latents  # see https://github.com/huggingface/diffusers/issues/726
 
     with torch.no_grad():
       image = pipeline_components["vae"].decode(latents).sample
