@@ -19,7 +19,8 @@ def validation_step(accelerator, val_dataloader, pipeline: PipelineComponents, n
     # setting the unet model within the pipeline object to evaluation mode
     pipeline["unet"].eval()
     pipeline["layout_embedder"].eval()
-
+    val_loss = 0
+    num_batches = 0
     for val_batch_idx, val_batch in enumerate(val_dataloader):
         # convert image to latent space
         val_batch_size = val_batch["pixel_values"].shape[0]
@@ -50,9 +51,11 @@ def validation_step(accelerator, val_dataloader, pipeline: PipelineComponents, n
         model_pred = pipeline["unet"](noisy_latents, timesteps, condition).sample
         loss = functional.mse_loss(model_pred.float(), target.float(), reduction="mean")
         avg_loss = accelerator.gather(loss.repeat(val_batch_size)).mean()
+        val_loss += avg_loss.item() 
+        num_batches += 1
         
-        # Log validation loss
-        accelerator.log({"val_loss": avg_loss}, step=global_step)
+    # Log validation loss
+    accelerator.log({"val_loss": val_loss/ num_batches}, step=global_step)
 
         # TODO compute loss with layout conditioning only
         # TODO compute loss with text condition only

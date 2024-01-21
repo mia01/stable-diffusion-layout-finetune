@@ -536,25 +536,24 @@ def main():
                 logs = {"step_loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
                 progress_bar.set_postfix(**logs)
 
+
+                if accelerator.is_main_process:
+                    if epoch % args.validation_epochs == 0 or step == args.validation_steps:
+                            
+                        logger.info(f"Epoch: {epoch} step: {step} Running validation loss")
+                        validation_step(accelerator, val_dataloader, pipeline, epoch, global_step)
+
+                        logger.info(f"Epoch: {epoch} step: {step} Running validation inference")
+                        log_validation(accelerator, val_image_dataloader, {"vae":vae,
+                            "text_encoder": text_encoder,
+                            "unet": unet, 
+                            "layout_embedder": layout_embedder,
+                            "noise_scheduler": noise_scheduler,
+                            "tokenizer": tokenizer
+                        }, epoch, global_step,args.seed, args.num_inference_steps, args.output_dir) 
+                    
                 if global_step >= args.max_train_steps:
                     break
-
-            if accelerator.is_main_process:
-                if epoch % args.validation_epochs == 0 or step == args.validation_steps:
-                        
-                    logger.info(f"Epoch: {epoch} step: {step} Running validation loss")
-                    validation_step(accelerator, val_dataloader, pipeline, epoch, global_step)
-
-                    logger.info(f"Epoch: {epoch} step: {step} Running validation inference")
-                    log_validation(accelerator, val_image_dataloader, {"vae":vae,
-                        "text_encoder": text_encoder,
-                        "unet": unet, 
-                        "layout_embedder": layout_embedder,
-                        "noise_scheduler": noise_scheduler,
-                        "tokenizer": tokenizer
-                    }, epoch, global_step,args.seed, args.num_inference_steps, args.output_dir) 
-                    
-
         # Create the pipeline using the trained modules and save it.
         # TODO - amend to include the layout embedder - needs testing
         accelerator.wait_for_everyone()
