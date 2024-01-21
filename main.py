@@ -540,7 +540,7 @@ def main():
                     break
 
             if accelerator.is_main_process:
-                if epoch % args.validation_epochs == 0 or steps == args.validation_steps:
+                if epoch % args.validation_epochs == 0 or step == args.validation_steps:
                         
                     logger.info(f"Epoch: {epoch} step: {step} Running validation loss")
                     validation_step(accelerator, val_dataloader, pipeline, epoch, global_step)
