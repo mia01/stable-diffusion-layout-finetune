@@ -65,10 +65,10 @@ def log_validation(accelerator, val_dataloader, model_components: ModelComponent
         unconditioned_images_with_pipeline = run_inference_with_pipeline(accelerator, val_batch, "CompVis/stable-diffusion-v1-4", model_components["unet"], seed, num_inference_steps)
 
         logger.info(f"Epoch: {epoch} Running inference with layout and text condition")
-        images = run_inference(accelerator, val_batch, model_components, seed, num_inference_steps)
+        images = run_inference(accelerator, val_batch, model_components, seed, num_inference_steps, True)
         
         logger.info(f"Epoch: {epoch} Running inference with text condition only")
-        unconditioned_images = run_inference(accelerator, val_batch, model_components, seed, num_inference_steps, True)
+        unconditioned_images = run_inference(accelerator, val_batch, model_components, seed, num_inference_steps, False)
 
     for tracker in accelerator.trackers:
         if tracker.name == "tensorboard":

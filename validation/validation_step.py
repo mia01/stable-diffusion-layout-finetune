@@ -15,7 +15,7 @@ class PipelineComponents(TypedDict):
     tokenizer: nn.Module
 
 @torch.no_grad()
-def validation_step(accelerator, val_dataloader, pipeline: PipelineComponents, num_timesteps, epoch, global_step):
+def validation_step(accelerator, val_dataloader, pipeline: PipelineComponents, num_timesteps, global_step):
     # setting the unet model within the pipeline object to evaluation mode
     pipeline["unet"].eval()
     pipeline["layout_embedder"].eval()

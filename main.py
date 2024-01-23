@@ -538,10 +538,16 @@ def main():
 
 
                 if accelerator.is_main_process:
-                    if epoch % args.validation_epochs == 0 or step == args.validation_steps:
+                    if global_step % args.validation_steps == 0:
                             
                         logger.info(f"Epoch: {epoch} step: {step} Running validation loss")
-                        validation_step(accelerator, val_dataloader, pipeline, epoch, global_step)
+                        validation_step(accelerator, val_dataloader, {"vae":vae,
+                            "text_encoder": text_encoder,
+                            "unet": unet, 
+                            "layout_embedder": layout_embedder,
+                            "scheduler": noise_scheduler,
+                            "tokenizer": tokenizer
+                        }, noise_scheduler.config.num_train_timesteps, epoch, global_step)
 
                         logger.info(f"Epoch: {epoch} step: {step} Running validation inference")
                         log_validation(accelerator, val_image_dataloader, {"vae":vae,
