@@ -20,32 +20,35 @@ class inputs(TypedDict):
     bounding_boxes: torch.Tensor
 
 
-def run_inference(accelerator, inputs, pipeline_components: PipelineComponents, seed: int | None = None, num_inference_steps = 100, include_layout_condition = False):
+def run_inference(accelerator, inputs, pipeline_components: PipelineComponents, seed: int | None = None, num_inference_steps = 100, include_layout_condition = False, include_text_condition = True):
   logger = get_logger(__name__, log_level="INFO")
   logger.info(f"Running inference with {num_inference_steps} steps... ")
   
   with torch.no_grad():
 
     # Get text embedding (conditioning)
-    input_ids = inputs["input_ids"].to(accelerator.device)
-    text_encoder = pipeline_components["text_encoder"].to(accelerator.device)
-    encoded_results = text_encoder(input_ids)
-    encoder_hidden_states = encoded_results[0]
-    print("Got text condition")
+    if include_text_condition:
+      input_ids = inputs["input_ids"].to(accelerator.device)
+      text_encoder = pipeline_components["text_encoder"].to(accelerator.device)
+      encoded_results = text_encoder(input_ids)
+      encoder_hidden_states = encoded_results[0]
+      encoder_hidden_states = encoder_hidden_states.to(accelerator.device)
+      print("Got text condition")
 
     # Add layout embedding and concatenate with text embedding
     if include_layout_condition:
       inputs["bounding_boxes"] = inputs["bounding_boxes"].to(accelerator.device)
       layout_conditioning = get_layout_conditioning(pipeline_components["layout_embedder"], inputs["bounding_boxes"])
       layout_conditioning = layout_conditioning.to(accelerator.device)
-      encoder_hidden_states = encoder_hidden_states.to(accelerator.device)
       print("Got bbox condition")
 
-    if include_layout_condition:
+    if include_layout_condition and include_text_condition:
       # Concatenate layout and text embeddings
       condition = torch.cat((encoder_hidden_states, layout_conditioning), 1)
-    else:
+    elif include_text_condition:
       condition = encoder_hidden_states
+    elif include_layout_condition:
+      condition = layout_conditioning
 
     # Initialize the scheduler with our chosen num_inference_steps
     pipeline_components["noise_scheduler"].set_timesteps(num_inference_steps)

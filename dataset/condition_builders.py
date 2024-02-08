@@ -176,7 +176,7 @@ class ObjectsCenterPointsConditionalBuilder:
         random.shuffle(annotations)
         annotations = filter_annotations(annotations, crop_coordinates)
         if self.encode_crop:
-            annotations = rescale_annotations(annotations, FULL_CROP, horizontal_flip)
+            annotations = rescale_annotations(annotations, crop_coordinates, horizontal_flip)
             if horizontal_flip:
                 crop_coordinates = horizontally_flip_bbox(crop_coordinates)
             extra = self._crop_encoder(crop_coordinates)
@@ -249,6 +249,6 @@ class ObjectsBoundingBoxConditionalBuilder(ObjectsCenterPointsConditionalBuilder
             bbox = absolute_bbox(bbox, width, height)
             bbox_list.append((annotation.category_no, bbox))
         # TODO fix this bug so I can display on original images
-        # if crop_coordinates is not None:
-        #     crop_bbox = absolute_bbox(crop_coordinates, width, height)
+        if crop_coordinates is not None:
+            crop_bbox = absolute_bbox(crop_coordinates, width, height)
         return crop_bbox, bbox_list 
