@@ -4,7 +4,7 @@ from dataset.transforms import CenterCropReturnCoordinates, RandomHorizontalFlip
 from utils.helpers import convert_pil_to_tensor, load_image_from_disk, load_json
 from collections import defaultdict
 from typing import Dict, Iterable, List
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, IterableDataset
 from torchvision import transforms
 # see https://github.com/CompVis/latent-diffusion/issues/260#issuecomment-1526741772
 from tqdm import tqdm
@@ -61,6 +61,7 @@ class VisualGenomeBase(Dataset):
         # get image annotations
         image_data = self.image_descriptions[image_id]._asdict()
         image_data['annotations'] = self.annotations[image_id]
+        image_data['num_objects'] = len(image_data['annotations'])
 
         # load image
         image_data["original_image"] = load_image_from_disk(image_id, f"{self.images_folder}/{image_id}.jpg")
@@ -255,8 +256,45 @@ class VisualGenomeTest(VisualGenomeBase):
                  annotation_json_path,
                  captions_json_path,
                  images_folder,
+                 resolution
                  ):
         super().__init__("Test",
                  annotation_json_path,
                  captions_json_path,
-                 images_folder)
+                 images_folder,
+                 resolution)
+        
+
+class FilteredTestDataset(VisualGenomeTest):
+
+    def __init__(self,  
+                 annotation_json_path,
+                 captions_json_path,
+                 images_folder,
+                 resolution,
+                 max_objects_per_image=None):
+        self.max_objects_per_image = max_objects_per_image
+        VisualGenomeTest.__init__(self,
+                 annotation_json_path,
+                 captions_json_path,
+                 images_folder,
+                 resolution)
+        
+        
+        
+
+    def __iter__(self):
+        return self
+    
+    def __len__(self):
+       self.annotations = {k : v for k,v in self.annotations.items() if len(v) <= self.max_objects_per_image}
+       # Only include image ids that have annotations
+       self.image_id_index = sorted(list(self.annotations.keys()))
+       return len(self.image_id_index)
+        
+
+    def __getitem__(self, n: int):
+        while True:
+            item = super().__getitem__( n)
+            if self.max_objects_per_image is None or item['num_objects'] <= self.max_objects_per_image:
+                return item

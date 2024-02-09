@@ -9,6 +9,7 @@ from functools import partial
 from inspect import isfunction
 import PIL.Image as pil_image
 from torchvision.transforms import PILToTensor
+import torchvision.transforms.functional as F
 
 # helpers
 def exists(val):
@@ -103,3 +104,8 @@ def convert_pil_to_tensor(image) -> torch.Tensor:
         # to filter PyTorch UserWarning as described here: https://github.com/pytorch/vision/issues/2194
         warnings.simplefilter("ignore")
         return pil_to_tensor(image)
+    
+
+def convert_tensor_to_pil(image: torch.Tensor) -> pil_image.Image:
+    return F.to_pil_image(image)
+

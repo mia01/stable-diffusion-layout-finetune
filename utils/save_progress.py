@@ -56,6 +56,12 @@ def save_tensor_as_image(tensor: torch.Tensor, filename: str):
     # Save the image
     pil_image.save(filename)
 
+def get_layout_image_for_bbox(data_set: VisualGenomeValidation, bbox: VisualGenomeValidation):
+    builders = data_set.get_bounding_box_builders()
+    bbox_builder = builders[0]["bounding_boxes"]
+    figure_size = (512,512) 
+    plot = bbox_builder.plot(bbox.long(), data_set.get_category_no_to_id_dict(), figure_size)
+    return plot
 
 def save_layouts(data_set: VisualGenomeValidation, val_batch, epoch, global_step, output_dir, file_name):
     builders = data_set.get_bounding_box_builders()
@@ -92,3 +98,19 @@ def log_validation_image(batch_tensors, epoch, global_step, output_dir, image_na
   path = os.path.join(save_path, filename)
   os.makedirs(os.path.split(path)[0], exist_ok=True)
   pil_image.save(path)
+
+def log_validation_images_separate(batch_tensors, epoch, global_step, output_dir, image_name):
+    save_path = os.path.join(f"{output_dir}", f"image_logs-{epoch}-{global_step}")
+    
+    idx = 0
+    for tensor in batch_tensors:
+        # Convert to PIL Image
+        tensor = tensor.permute(1, 2, 0)  # Change from [C, H, W] to [H, W, C]
+        tensor = tensor.cpu().numpy()     # Convert to NumPy array
+        image = (tensor * 255).astype(np.uint8)
+        pil_image = Image.fromarray(image)
+        filename = f"{image_name}_s-{global_step}_e-{epoch}_idx-{idx}.png"
+        path = os.path.join(save_path, filename)
+        os.makedirs(os.path.split(path)[0], exist_ok=True)
+        pil_image.save(path)
+        idx = idx + 1
