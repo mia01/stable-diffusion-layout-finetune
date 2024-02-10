@@ -104,7 +104,9 @@ def convert_pil_to_tensor(image) -> torch.Tensor:
         # to filter PyTorch UserWarning as described here: https://github.com/pytorch/vision/issues/2194
         warnings.simplefilter("ignore")
         return pil_to_tensor(image)
-    
+
+def convert_pil_list_to_tensor(images: list) -> torch.Tensor:
+    return torch.stack([convert_pil_to_tensor(image) for image in images]) 
 
 def convert_tensor_to_pil(image: torch.Tensor) -> pil_image.Image:
     return F.to_pil_image(image)

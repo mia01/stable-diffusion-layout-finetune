@@ -34,7 +34,7 @@ from diffusers.training_utils import EMAModel
 from test.clip_score import calculate_clip_score
 from test.fid_score import calculate_fid_score
 from test.inception_score import calculate_inception_score
-from utils.helpers import convert_pil_to_tensor
+from utils.helpers import convert_pil_list_to_tensor, convert_pil_to_tensor
 from utils.save_progress import get_layout_image_for_bbox, log_validation_images_separate, save_layouts
 from validation.log_validation import get_wandb_bounding_boxes
 from validation.validation_step import validation_step
@@ -196,6 +196,18 @@ def test():
             num_workers=args.dataloader_num_workers,
         )
 
+        check_dataloader = torch.utils.data.DataLoader(
+            test_dataset,
+            collate_fn=collate_fn,
+            batch_size=args.test_batch_size,
+            num_workers=args.dataloader_num_workers,
+        )
+        # check all images load 
+        logger.info("Checking all images load")
+        for i, batch in enumerate(check_dataloader):
+            logger.info(f"batch {i} {batch['pixel_values'].shape} - loaded successfully")
+            
+
         # Prepare everything with our `accelerator`.
         # TODO - check is optimiser  and lr_scheduler needed
         logger.info("device")
@@ -305,170 +317,171 @@ def test():
         logger.info(f"Starting the testing")
 
         log_table_columns = ["Test Image Id", "Test Image", "No. Objects" ,"Layout","Caption", "Generated Image"]
-       
-        for step, test_batch in enumerate(test_dataloader):
-            progress_bar.update(args.test_batch_size)       
-            logger.info(f"Step: {step} Running test inference")
-            
-            model_components = {
-                "vae":vae,
-                "text_encoder": text_encoder,
-                "unet": unet, 
-                "layout_embedder": layout_embedder,
-                "noise_scheduler": noise_scheduler,
-                "tokenizer": tokenizer
-                }
-            # with torch.autocast("cuda"): Check with and without - Huggingface recommend not to use Don’t use torch.autocast in any of the pipelines as it can lead to black images and is always slower than pure float16 precision. see https://huggingface.co/docs/diffusers/optimization/fp16
-            original_validation_images += test_batch["pixel_values"]
-            captions = [",".join(vb["captions"]) for vb in test_batch["raw_data"]]
-            prompts += captions
+        # Fix for RuntimeError: Input type (float) and bias type (c10::Half) should be the same
+        with torch.cuda.amp.autocast(enabled=True, dtype=torch.float16) as autocast, torch.backends.cuda.sdp_kernel(enable_flash=False) as disable:
+            for step, test_batch in enumerate(test_dataloader):
+                progress_bar.update(args.test_batch_size)       
+                logger.info(f"Step: {step} Running test inference")
+                
+                model_components = {
+                    "vae":vae,
+                    "text_encoder": text_encoder,
+                    "unet": unet, 
+                    "layout_embedder": layout_embedder,
+                    "noise_scheduler": noise_scheduler,
+                    "tokenizer": tokenizer
+                    }
+                # with torch.autocast("cuda"): Check with and without - Huggingface recommend not to use Don’t use torch.autocast in any of the pipelines as it can lead to black images and is always slower than pure float16 precision. see https://huggingface.co/docs/diffusers/optimization/fp16
+                original_validation_images += test_batch["pixel_values"]
+                captions = [",".join(vb["captions"]) for vb in test_batch["raw_data"]]
+                prompts += captions
 
-            logger.info(f"Step: {step} Running inference with text condition only and original pretrained pipeline")
-            text_conditioned_sd_pipeline_images = run_inference_with_pipeline(accelerator, test_batch, "CompVis/stable-diffusion-v1-4", args.seed, args.num_inference_steps)
-            all_text_onditioned_sd_pipeline_images += text_conditioned_sd_pipeline_images
+                logger.info(f"Step: {step} Running inference with text condition only and original pretrained pipeline")
+                text_conditioned_sd_pipeline_images = run_inference_with_pipeline(accelerator, test_batch, "CompVis/stable-diffusion-v1-4", args.seed, args.num_inference_steps)
+                all_text_onditioned_sd_pipeline_images += text_conditioned_sd_pipeline_images
 
-            logger.info(f"Step: {step} Running inference with layout and text condition")
-            text_layout_conditioned_images = run_inference(accelerator, test_batch, model_components, args.seed, args.num_inference_steps, True, True)
-            all_text_layout_conditioned_images += text_layout_conditioned_images
+                logger.info(f"Step: {step} Running inference with layout and text condition")
+                text_layout_conditioned_images = run_inference(accelerator, test_batch, model_components, args.seed, args.num_inference_steps, True, True)
+                all_text_layout_conditioned_images += text_layout_conditioned_images
 
-            logger.info(f"Step: {step} Running inference with layout condition only")
-            layout_only_conditioned_images = run_inference(accelerator, test_batch, model_components, args.seed, args.num_inference_steps, True, False)
-            all_layout_only_conditioned_images += layout_only_conditioned_images
+                logger.info(f"Step: {step} Running inference with layout condition only")
+                layout_only_conditioned_images = run_inference(accelerator, test_batch, model_components, args.seed, args.num_inference_steps, True, False)
+                all_layout_only_conditioned_images += layout_only_conditioned_images
 
-            logger.info(f"Step: {step} Running inference with text condition only")
-            text_only_conditioned_images = run_inference(accelerator, test_batch, model_components, args.seed, args.num_inference_steps, False, True)
-            all_text_only_conditioned_images += text_only_conditioned_images
+                logger.info(f"Step: {step} Running inference with text condition only")
+                text_only_conditioned_images = run_inference(accelerator, test_batch, model_components, args.seed, args.num_inference_steps, False, True)
+                all_text_only_conditioned_images += text_only_conditioned_images
 
-            for tracker in accelerator.trackers:
-                if tracker.name == "wandb":
-                    
-                    captions = [vb["captions"] for vb in test_batch["raw_data"]]
-                    
-                    # https://wandb.ai/stacey/yolo-drive/reports/Exploring-Bounding-Boxes-for-Object-Detection-With-Weights-Biases--Vmlldzo4Nzg4MQ
-                    tracker.log(
-                        {
-                            "test_images": [
-                                wandb.Image(image, caption=f"{test_batch['raw_data'][i]['id']}: {captions[i]}", boxes = get_wandb_bounding_boxes(image, test_batch['raw_data'][i], test_dataloader.dataset))
-                                for i, image in enumerate(test_batch["pixel_values"])
-                            ]
-                        }
-                    )
+                for tracker in accelerator.trackers:
+                    if tracker.name == "wandb":
+                        
+                        captions = [vb["captions"] for vb in test_batch["raw_data"]]
+                        
+                        # https://wandb.ai/stacey/yolo-drive/reports/Exploring-Bounding-Boxes-for-Object-Detection-With-Weights-Biases--Vmlldzo4Nzg4MQ
+                        tracker.log(
+                            {
+                                "test_images": [
+                                    wandb.Image(image, caption=f"{test_batch['raw_data'][i]['id']}: {captions[i]}", boxes = get_wandb_bounding_boxes(image, test_batch['raw_data'][i], test_dataloader.dataset))
+                                    for i, image in enumerate(test_batch["pixel_values"])
+                                ]
+                            }
+                        )
 
-                    tracker.log(
-                        {
-                            "text_conditioned_sd_pipeline_images": [
-                                wandb.Image(image, caption=f"{i}: {captions[i]}")
-                                for i, image in enumerate(text_conditioned_sd_pipeline_images)
-                            ]
-                        }
-                    )
+                        tracker.log(
+                            {
+                                "text_conditioned_sd_pipeline_images": [
+                                    wandb.Image(image, caption=f"{i}: {captions[i]}")
+                                    for i, image in enumerate(text_conditioned_sd_pipeline_images)
+                                ]
+                            }
+                        )
 
-                    tracker.log(
-                        {
-                            "text_layout_conditioned_images": [
-                                wandb.Image(image, caption=f"{i}: {captions[i]}")
-                                for i, image in enumerate(text_layout_conditioned_images)
-                            ]
-                        }
-                    )
+                        tracker.log(
+                            {
+                                "text_layout_conditioned_images": [
+                                    wandb.Image(image, caption=f"{i}: {captions[i]}")
+                                    for i, image in enumerate(text_layout_conditioned_images)
+                                ]
+                            }
+                        )
 
-                    tracker.log(
-                        {
-                            "layout_only_conditioned_images": [
-                                wandb.Image(image, caption=f"{i}: {captions[i]}")
-                                for i, image in enumerate(layout_only_conditioned_images)
-                            ]
-                        }
-                    )
+                        tracker.log(
+                            {
+                                "layout_only_conditioned_images": [
+                                    wandb.Image(image, caption=f"{i}: {captions[i]}")
+                                    for i, image in enumerate(layout_only_conditioned_images)
+                                ]
+                            }
+                        )
 
-                    tracker.log(
-                        {
-                            "text_only_conditioned_images": [
-                                wandb.Image(image, caption=f"{i}: {captions[i]}")
-                                for i, image in enumerate(text_only_conditioned_images)
-                            ]
-                        }
-                    )
-                else:
-                    logger.warn(f"image logging not implemented for {tracker.name}")
-            
-            # save images to file for future use in scoring
-            save_layouts(test_dataset, test_batch, 0, global_step, "test_results", "cond_layout")
-            # Log the original validation image
-            log_validation_images_separate(test_batch["pixel_values"], 0, global_step, "test_results", "test_image")
-            
-            # Log image generated by original stable diffusion pipeline
-            log_validation_images_separate(convert_pil_to_tensor(text_conditioned_sd_pipeline_images), 0, global_step, "test_results", "text_conditioned_sd_pipeline_images")
-            
-            # Log image generatedwith layout and text condition
-            log_validation_images_separate(text_layout_conditioned_images, 0, global_step, "test_results", "text_layout_conditioned_images")
+                        tracker.log(
+                            {
+                                "text_only_conditioned_images": [
+                                    wandb.Image(image, caption=f"{i}: {captions[i]}")
+                                    for i, image in enumerate(text_only_conditioned_images)
+                                ]
+                            }
+                        )
+                    else:
+                        logger.warn(f"image logging not implemented for {tracker.name}")
+                
+                # save images to file for future use in scoring
+                save_layouts(test_dataset, test_batch, 0, global_step, "test_results", "cond_layout")
+                # Log the original validation image
+                log_validation_images_separate(test_batch["pixel_values"], 0, global_step, "test_results", "test_image")
+                
+                # Log image generated by original stable diffusion pipeline
+                log_validation_images_separate(convert_pil_list_to_tensor(text_conditioned_sd_pipeline_images), 0, global_step, "test_results", "text_conditioned_sd_pipeline_images")
+                
+                # Log image generatedwith layout and text condition
+                log_validation_images_separate(text_layout_conditioned_images, 0, global_step, "test_results", "text_layout_conditioned_images")
 
-            # Log image generated with text condition only
-            log_validation_images_separate(text_only_conditioned_images, 0, global_step, "test_results", "text_only_conditioned_images")
+                # Log image generated with text condition only
+                log_validation_images_separate(text_only_conditioned_images, 0, global_step, "test_results", "text_only_conditioned_images")
 
-            # Log image generated with layout condition only
-            log_validation_images_separate(layout_only_conditioned_images, 0, global_step, "test_results", "layout_only_conditioned_images")
+                # Log image generated with layout condition only
+                log_validation_images_separate(layout_only_conditioned_images, 0, global_step, "test_results", "layout_only_conditioned_images")
 
-            for tracker in accelerator.trackers:
-                if tracker.name == "wandb":
-                    # columns = ["Test Image Id", "Test Image", "No. Objects" ,"Layout", "Caption", "Generated Image"]
-                    
-                    text_only_conditioned_images_log_table_data = []
-                    for i in range(len(text_only_conditioned_images)):
-                        text_only_conditioned_images_log_table_data.append([
+                for tracker in accelerator.trackers:
+                    if tracker.name == "wandb":
+                        # columns = ["Test Image Id", "Test Image", "No. Objects" ,"Layout", "Caption", "Generated Image"]
+                        
+                        text_only_conditioned_images_log_table_data = []
+                        for i in range(len(text_only_conditioned_images)):
+                            text_only_conditioned_images_log_table_data.append([
+                                    test_batch["raw_data"][i]["id"],
+                                    wandb.Image(test_batch["pixel_values"][i]),
+                                    test_batch["raw_data"][i]["num_objects"],
+                                    wandb.Image(get_layout_image_for_bbox(test_dataset, test_batch["bounding_boxes"][i])),
+                                    ','.join(test_batch["raw_data"][i]["captions"]),
+                                    wandb.Image(text_only_conditioned_images[i])                
+                            ])
+                        text_only_conditioned_images_log_table = wandb.Table(columns=log_table_columns, data=text_only_conditioned_images_log_table_data)
+                        tracker.log({"text_only_conditioned_images_log_table": text_only_conditioned_images_log_table})
+
+
+                        text_layout_conditioned_images_log_table_data = []
+                        for i in range(len(text_layout_conditioned_images)):
+                            text_layout_conditioned_images_log_table_data.append([
+                                    test_batch["raw_data"][i]["id"],
+                                    wandb.Image(test_batch["pixel_values"][i]),
+                                    test_batch["raw_data"][i]["num_objects"],
+                                    wandb.Image(get_layout_image_for_bbox(test_dataset, test_batch["bounding_boxes"][i])),
+                                    ','.join(test_batch["raw_data"][i]["captions"]),
+                                    wandb.Image(text_layout_conditioned_images[i])
+                            ])
+                        text_layout_conditioned_images_log_table = wandb.Table(columns=log_table_columns, data=text_layout_conditioned_images_log_table_data)
+                        tracker.log({"text_layout_conditioned_images_log_table": text_layout_conditioned_images_log_table})
+
+                        layout_only_conditioned_images_log_table_data = []
+                        for i in range(len(layout_only_conditioned_images)):
+                            layout_only_conditioned_images_log_table_data.append([
+                                    test_batch["raw_data"][i]["id"],
+                                    wandb.Image(test_batch["pixel_values"][i]),
+                                    test_batch["raw_data"][i]["num_objects"],
+                                    wandb.Image(get_layout_image_for_bbox(test_dataset, test_batch["bounding_boxes"][i])),
+                                    ','.join(test_batch["raw_data"][i]["captions"]),
+                                    wandb.Image(layout_only_conditioned_images[i])
+                            ])
+                        layout_only_conditioned_images_log_table = wandb.Table(columns=log_table_columns, data=layout_only_conditioned_images_log_table_data)
+                        tracker.log({"layout_only_conditioned_images_log_table": layout_only_conditioned_images_log_table})
+
+                        
+                        text_conditioned_sd_pipeline_log_table_data = [] 
+                        for i in range(len(text_conditioned_sd_pipeline_images)):
+                            text_conditioned_sd_pipeline_log_table_data.append([
                                 test_batch["raw_data"][i]["id"],
                                 wandb.Image(test_batch["pixel_values"][i]),
                                 test_batch["raw_data"][i]["num_objects"],
                                 wandb.Image(get_layout_image_for_bbox(test_dataset, test_batch["bounding_boxes"][i])),
                                 ','.join(test_batch["raw_data"][i]["captions"]),
-                                wandb.Image(text_only_conditioned_images[i])                
-                        ])
-                    text_only_conditioned_images_log_table = wandb.Table(columns=log_table_columns, data=text_only_conditioned_images_log_table_data)
-                    tracker.log({"text_only_conditioned_images_log_table": text_only_conditioned_images_log_table})
-
-
-                    text_layout_conditioned_images_log_table_data = []
-                    for i in range(len(text_layout_conditioned_images)):
-                        text_layout_conditioned_images_log_table_data.append([
-                                test_batch["raw_data"][i]["id"],
-                                wandb.Image(test_batch["pixel_values"][i]),
-                                test_batch["raw_data"][i]["num_objects"],
-                                wandb.Image(get_layout_image_for_bbox(test_dataset, test_batch["bounding_boxes"][i])),
-                                ','.join(test_batch["raw_data"][i]["captions"]),
-                                wandb.Image(text_layout_conditioned_images[i])
-                        ])
-                    text_layout_conditioned_images_log_table = wandb.Table(columns=log_table_columns, data=text_layout_conditioned_images_log_table_data)
-                    tracker.log({"text_layout_conditioned_images_log_table": text_layout_conditioned_images_log_table})
-
-                    layout_only_conditioned_images_log_table_data = []
-                    for i in range(len(layout_only_conditioned_images)):
-                        layout_only_conditioned_images_log_table_data.append([
-                                test_batch["raw_data"][i]["id"],
-                                wandb.Image(test_batch["pixel_values"][i]),
-                                test_batch["raw_data"][i]["num_objects"],
-                                wandb.Image(get_layout_image_for_bbox(test_dataset, test_batch["bounding_boxes"][i])),
-                                ','.join(test_batch["raw_data"][i]["captions"]),
-                                wandb.Image(layout_only_conditioned_images[i])
-                        ])
-                    layout_only_conditioned_images_log_table = wandb.Table(columns=log_table_columns, data=layout_only_conditioned_images_log_table_data)
-                    tracker.log({"layout_only_conditioned_images_log_table": layout_only_conditioned_images_log_table})
-
-                    
-                    text_conditioned_sd_pipeline_log_table_data = [] 
-                    for i in range(len(text_conditioned_sd_pipeline_images)):
-                        text_conditioned_sd_pipeline_log_table_data.append([
-                            test_batch["raw_data"][i]["id"],
-                            wandb.Image(test_batch["pixel_values"][i]),
-                            test_batch["raw_data"][i]["num_objects"],
-                            wandb.Image(get_layout_image_for_bbox(test_dataset, test_batch["bounding_boxes"][i])),
-                            ','.join(test_batch["raw_data"][i]["captions"]),
-                            wandb.Image(text_conditioned_sd_pipeline_images[i])
-                        ]) 
-                    text_conditioned_sd_pipeline_log_table = wandb.Table(columns=log_table_columns, data = text_conditioned_sd_pipeline_log_table_data)
-                    tracker.log({"text_conditioned_sd_pipeline_log_table": text_conditioned_sd_pipeline_log_table})
-    
-            if step >= args.max_test_steps:
-                break
+                                wandb.Image(text_conditioned_sd_pipeline_images[i])
+                            ]) 
+                        text_conditioned_sd_pipeline_log_table = wandb.Table(columns=log_table_columns, data = text_conditioned_sd_pipeline_log_table_data)
+                        tracker.log({"text_conditioned_sd_pipeline_log_table": text_conditioned_sd_pipeline_log_table})
+        
+                if step >= args.max_test_steps:
+                    break
         # KID score
         all_text_conditioned_sd_pipeline_kid_score_mean, all_text_conditioned_sd_pipeline_kid_score_std = calculate_kid_score(original_validation_images, all_text_onditioned_sd_pipeline_images)
         all_text_layout_conditioned_images_kid_score_mean, all_text_layout_conditioned_images_kid_score_std = calculate_kid_score(original_validation_images, all_text_layout_conditioned_images)

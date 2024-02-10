@@ -10,6 +10,8 @@ def run_inference_with_pipeline(accelerator, val_batch, pretrained_model_name_or
         pretrained_model_name_or_path
     )
 
+    pipeline.to(accelerator.device)
+
     if seed is None:
         generator = None
     else:
