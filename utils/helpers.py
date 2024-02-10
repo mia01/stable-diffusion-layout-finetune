@@ -63,16 +63,33 @@ def groupby_prefix_and_trim(prefix, d):
     kwargs_without_prefix = dict(map(lambda x: (x[0][len(prefix):], x[1]), tuple(kwargs_with_prefix.items())))
     return kwargs_without_prefix, kwargs
 
+
 def load_image_from_disk(image_id , path: Path):
     # if not exists download from url
     if os.path.exists(path):
         return pil_image.open(path).convert('RGB')
     else:
-        img_url = f"https://cs.stanford.edu/people/rak248/VG_100K_2/{image_id}.jpg"
+        img_url = get_image_url(image_id)
         with open(path, 'wb') as f:
             f.write(requests.get(img_url).content)
 
         return pil_image.open(path).convert('RGB')
+
+def get_image_url(image_id):
+    # First URL
+    img_url = f"https://cs.stanford.edu/people/rak248/VG_100K/{image_id}.jpg"
+    response = requests.get(img_url)
+
+    # If image not found at the first URL, try the second URL
+    if response.status_code == 404:
+        img_url = f"https://cs.stanford.edu/people/rak248/VG_100K_2/{image_id}.jpg"
+        response = requests.get(img_url)
+
+    # If image still not found, raise an error or handle accordingly
+    if response.status_code != 200:
+        raise Exception("Image not found at both URLs")
+
+    return img_url
 
 
 def load_json(file_path):

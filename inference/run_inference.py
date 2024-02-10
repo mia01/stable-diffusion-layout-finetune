@@ -20,7 +20,7 @@ class inputs(TypedDict):
     bounding_boxes: torch.Tensor
 
 
-def run_inference(accelerator, inputs, pipeline_components: PipelineComponents, seed: int | None = None, num_inference_steps = 100, exclude_layout_condition = False):
+def run_inference(accelerator, inputs, pipeline_components: PipelineComponents, seed: int | None = None, num_inference_steps = 100, include_layout_condition = False):
   logger = get_logger(__name__, log_level="INFO")
   logger.info(f"Running inference with {num_inference_steps} steps... ")
   
@@ -34,14 +34,14 @@ def run_inference(accelerator, inputs, pipeline_components: PipelineComponents, 
     print("Got text condition")
 
     # Add layout embedding and concatenate with text embedding
-    if exclude_layout_condition != False:
+    if include_layout_condition:
       inputs["bounding_boxes"] = inputs["bounding_boxes"].to(accelerator.device)
       layout_conditioning = get_layout_conditioning(pipeline_components["layout_embedder"], inputs["bounding_boxes"])
       layout_conditioning = layout_conditioning.to(accelerator.device)
       encoder_hidden_states = encoder_hidden_states.to(accelerator.device)
       print("Got bbox condition")
 
-    if exclude_layout_condition != False:
+    if include_layout_condition:
       # Concatenate layout and text embeddings
       condition = torch.cat((encoder_hidden_states, layout_conditioning), 1)
     else:
