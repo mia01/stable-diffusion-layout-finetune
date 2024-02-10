@@ -83,7 +83,7 @@ def parse_args():
     parser.add_argument(
         "--max_test_steps",
         type=int,
-        default=0,
+        default=3,
         help=(
             "The maximum number of test steps."
         ),

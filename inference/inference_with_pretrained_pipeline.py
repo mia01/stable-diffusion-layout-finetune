@@ -22,7 +22,7 @@ def run_inference_with_pipeline(accelerator, val_batch, pretrained_model_name_or
             image = pipeline(data["captions"][0], num_inference_steps=num_inference_steps, generator=generator).images[0]
         images.append(image)
 
-    with torch.autocast("cuda"):
-        image = pipeline("a photograph of an astronaut riding a horse", num_inference_steps=num_inference_steps, generator=generator).images[0]
-        images.append(image)
+    # with torch.autocast("cuda"):
+    #     image = pipeline("a photograph of an astronaut riding a horse", num_inference_steps=num_inference_steps, generator=generator).images[0]
+    #     images.append(image)
     return images

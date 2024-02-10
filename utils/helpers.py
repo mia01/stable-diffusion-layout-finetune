@@ -109,3 +109,16 @@ def convert_pil_to_tensor(image) -> torch.Tensor:
 def convert_tensor_to_pil(image: torch.Tensor) -> pil_image.Image:
     return F.to_pil_image(image)
 
+
+def normalise_tensors(images_tensor):
+    is_in_range = images_tensor.min() >= -1 and images_tensor.max() <= 1
+    if is_in_range:
+        print("images_tensor Images are in the range [-1, 1]. Normalizing to [0, 225]")
+        # Reverse the normalization process to scale values back to [0, 255]
+        images_tensor = (images_tensor + 1) * 127.5
+
+        # Since the result should represent image pixel values, convert to uint8
+    if images_tensor.dtype != torch.uint8:
+        images_tensor = images_tensor.to(torch.uint8)
+
+    return images_tensor

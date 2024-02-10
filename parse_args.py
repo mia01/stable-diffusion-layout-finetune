@@ -188,13 +188,13 @@ def parse_args():
     parser.add_argument(
         "--lr_warmup_steps", type=int, default=500, help="Number of steps for the warmup in the lr scheduler."
     )
-    # parser.add_argument(
-    #     "--snr_gamma",
-    #     type=float,
-    #     default=None,
-    #     help="SNR weighting gamma to be used if rebalancing the loss. Recommended value is 5.0. "
-    #     "More details here: https://arxiv.org/abs/2303.09556.",
-    # )
+    parser.add_argument(
+        "--snr_gamma",
+        type=float,
+        default=None,
+        help="SNR weighting gamma to be used if rebalancing the loss. Recommended value is 5.0. "
+        "More details here: https://arxiv.org/abs/2303.09556.",
+    )
     parser.add_argument(
         "--use_8bit_adam", action="store_true", help="Whether or not to use 8-bit Adam from bitsandbytes."
     )
@@ -277,7 +277,7 @@ def parse_args():
     parser.add_argument(
         "--checkpointing_steps",
         type=int,
-        default=500,
+        default=10,
         help=(
             "Save a checkpoint of the training state every X updates. These checkpoints are only suitable for resuming"
             " training using `--resume_from_checkpoint`."
@@ -298,9 +298,9 @@ def parse_args():
             ' `--checkpointing_steps`, or `"latest"` to automatically select the last available checkpoint.'
         ),
     )
-    # parser.add_argument(
-    #     "--enable_xformers_memory_efficient_attention", action="store_true", help="Whether or not to use xformers."
-    # )
+    parser.add_argument(
+        "--enable_xformers_memory_efficient_attention", action="store_true", help="Whether or not to use xformers."
+    )
     parser.add_argument("--noise_offset", type=float, default=0, help="The scale of noise offset.")
     parser.add_argument(
         "--validation_epochs",
@@ -311,7 +311,7 @@ def parse_args():
     parser.add_argument(
         "--validation_steps",
         type=int,
-        default=500,
+        default=1,
         help="Run validation every X steps.",
     )
     parser.add_argument(
