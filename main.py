@@ -28,6 +28,10 @@ from diffusers.optimization import get_scheduler
 from diffusers.training_utils import EMAModel
 from validation.log_validation import log_validation
 from validation.validation_step import validation_step
+from diffusers.utils.import_utils import is_xformers_available
+from diffusers.training_utils import EMAModel, compute_snr
+
+
 
 def main():
     args = parse_args()
@@ -121,7 +125,19 @@ def main():
         unet.train()
         layout_embedder.train()
 
-        # TODO - check if enable_xformers_memory_efficient_attention is needed
+        # Huggingface recommend using either xFormers or torch.nn.functional.scaled_dot_product_attention in PyTorch 2.0 for their memory-efficient attention
+        if args.enable_xformers_memory_efficient_attention:
+            if is_xformers_available():
+                import xformers
+
+                xformers_version = version.parse(xformers.__version__)
+                if xformers_version == version.parse("0.0.16"):
+                    logger.warn(
+                        "xFormers 0.0.16 cannot be used for training in some GPUs. If you observe problems during training, please update xFormers to at least 0.0.17. See https://huggingface.co/docs/diffusers/main/en/optimization/xformers for more details."
+                    )
+                unet.enable_xformers_memory_efficient_attention()
+            else:
+                raise ValueError("xformers is not available. Make sure it is installed correctly")
 
         # `accelerate` 0.16.0 will have better support for customized saving
         if version.parse(accelerate.__version__) >= version.parse("0.16.0"):
@@ -147,8 +163,11 @@ def main():
                     if model.__class__.__name__ == "LayoutEmbedderModel":
                         load_model = LayoutEmbedderModel.from_pretrained(input_dir, subfolder=model.__class__.__name__)
                         # model.register_to_config(**load_model.config)
-                    else:
+                    elif model.__class__.__name__ == "UNet2DConditionModel":
                         load_model = UNet2DConditionModel.from_pretrained(input_dir, subfolder=model.__class__.__name__)
+                        model.register_to_config(**load_model.config)
+                    elif model.__class__.__name__ == "AutoencoderKL":
+                        load_model = AutoencoderKL.from_pretrained(input_dir, subfolder=model.__class__.__name__)
                         model.register_to_config(**load_model.config)
 
                     model.load_state_dict(load_model.state_dict())
@@ -160,6 +179,7 @@ def main():
         if args.gradient_checkpointing:
             unet.enable_gradient_checkpointing()
 
+        # TODO - check if this is needed
         # Enable TF32 for faster training on Ampere GPUs,
         # cf https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices
         if args.allow_tf32:
@@ -182,6 +202,8 @@ def main():
             optimizer_cls = bnb.optim.AdamW8bit
         else:
             optimizer_cls = torch.optim.AdamW
+
+        # TODO - should layout embedder be included in the optimizer?        
 
         optimizer = optimizer_cls(
             unet.parameters(),
@@ -300,8 +322,8 @@ def main():
         # Prepare everything with our `accelerator`.
         logger.info("device")
         logger.info(accelerator.device)
-        unet, optimizer, train_dataloader, val_dataloader, lr_scheduler, layout_embedder = accelerator.prepare(
-            unet, optimizer, train_dataloader, val_dataloader,lr_scheduler, layout_embedder
+        unet, vae, optimizer, train_dataloader, val_dataloader, lr_scheduler, layout_embedder = accelerator.prepare(
+            unet, vae, optimizer, train_dataloader, val_dataloader,lr_scheduler, layout_embedder
         )
 
         # For mixed precision training we cast all non-trainable weigths (vae, non-lora text_encoder and non-lora unet) to half-precision
@@ -392,16 +414,14 @@ def main():
             # TODO: Log Validation Images if first step in epoch (as baseline)
             if epoch == 0:
                 logger.info(f"Epoch: {epoch} Logging Validation images")
-                # log_validation(accelerator, val_image_dataloader, {"vae":vae,
-                #         "text_encoder": text_encoder,
-                #         "unet": unet, 
-                #         "layout_embedder": layout_embedder,
-                #         "noise_scheduler": noise_scheduler,
-                #         "tokenizer": tokenizer
-                #     }, epoch, global_step,args.seed, args.num_inference_steps, args.output_dir) # should I use args.num_inference_steps here?
-            logger.info(f"Epoch: {epoch} starting the training steps")
+                logger.info(f"Epoch: {epoch} starting the training steps")
             for step, batch in enumerate(train_dataloader):
                 with accelerator.accumulate(unet):
+                    save_path = os.path.join(args.output_dir, f"checkpoint-{epoch}-{global_step}")
+
+                    # TODO save the transformer for the layout data
+                    # accelerator.register_for_checkpointing(layout_embedder)
+                    accelerator.save_state(save_path)
                     # Convert images to latent space
                     latents = vae.encode(batch["pixel_values"].to(weight_dtype)).latent_dist.sample()
                     latents = latents * vae.config.scaling_factor
@@ -461,24 +481,24 @@ def main():
                     # Predict the noise residual and compute loss
                     model_pred = unet(noisy_latents, timesteps, condition).sample
                     
-                    # if args.snr_gamma is None: # TODO: this is None by default check if should be removed
-                    loss = functional.mse_loss(model_pred.float(), target.float(), reduction="mean")
-                    # else:
-                        # by default snr_gamma is None - see if I should remove this
+                    if args.snr_gamma is None:
+                    # SNR recommended to use to get better loss - see https://github.com/huggingface/diffusers/tree/main/examples/text_to_image#training-with-min-snr-weighting and https://arxiv.org/abs/2303.09556
+                        loss = functional.mse_loss(model_pred.float(), target.float(), reduction="mean")
+                    else:
                         # Compute loss-weights as per Section 3.4 of https://arxiv.org/abs/2303.09556.
                         # Since we predict the noise instead of x_0, the original formulation is slightly changed.
                         # This is discussed in Section 4.2 of the same paper.
-                        # snr = compute_snr(noise_scheduler, timesteps)
-                        # if noise_scheduler.config.prediction_type == "v_prediction":
-                        #     # Velocity objective requires that we add one to SNR values before we divide by them.
-                        #     snr = snr + 1
-                        # mse_loss_weights = (
-                        #     torch.stack([snr, args.snr_gamma * torch.ones_like(timesteps)], dim=1).min(dim=1)[0] / snr
-                        # )
+                        snr = compute_snr(noise_scheduler, timesteps)
+                        if noise_scheduler.config.prediction_type == "v_prediction":
+                            # Velocity objective requires that we add one to SNR values before we divide by them.
+                            snr = snr + 1
+                        mse_loss_weights = (
+                            torch.stack([snr, args.snr_gamma * torch.ones_like(timesteps)], dim=1).min(dim=1)[0] / snr
+                        )
 
-                        # loss = functional.mse_loss(model_pred.float(), target.float(), reduction="none")
-                        # loss = loss.mean(dim=list(range(1, len(loss.shape)))) * mse_loss_weights
-                        # loss = loss.mean()
+                        loss = functional.mse_loss(model_pred.float(), target.float(), reduction="none")
+                        loss = loss.mean(dim=list(range(1, len(loss.shape)))) * mse_loss_weights
+                        loss = loss.mean()
 
                     # Gather the losses across all processes for logging (if we use distributed training).
                     avg_loss = accelerator.gather(loss.repeat(args.train_batch_size)).mean()
@@ -534,6 +554,7 @@ def main():
                             logger.info(f"Epoch: {epoch} step: {step} Saved checkpoint state to {save_path}")
 
                 logs = {"step_loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
+                accelerator.log(logs)
                 progress_bar.set_postfix(**logs)
 
 
@@ -547,7 +568,9 @@ def main():
                             "layout_embedder": layout_embedder,
                             "scheduler": noise_scheduler,
                             "tokenizer": tokenizer
-                        }, noise_scheduler.config.num_train_timesteps, epoch, global_step)
+                        }, noise_scheduler.config.num_train_timesteps, global_step)
+                        unet.train()
+                        layout_embedder.train()
 
                         logger.info(f"Epoch: {epoch} step: {step} Running validation inference")
                         log_validation(accelerator, val_image_dataloader, {"vae":vae,
