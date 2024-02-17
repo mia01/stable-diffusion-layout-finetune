@@ -10,12 +10,14 @@ def run_inference_with_pipeline(accelerator, val_batch, pretrained_model_name_or
         pretrained_model_name_or_path
     )
 
+    pipeline.to(accelerator.device)
+
     if seed is None:
         generator = None
     else:
         generator = torch.manual_seed(seed)
 
-    pipeline.set_progress_bar_config(disable=False)
+    pipeline.set_progress_bar_config(disable=True)
     images = []
     for data in val_batch["raw_data"]:
         with torch.autocast("cuda"):

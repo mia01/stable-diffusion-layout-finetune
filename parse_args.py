@@ -31,31 +31,31 @@ def parse_args():
     parser.add_argument(
         "--train_annotation_file",
         type=str,
-        default="/Users/miav1/Desktop/university/2023/disseration/datasets/visual genome/data/train_coco_style.json",
+        default="/root/visual_genome/train_coco_style.json",
         help="Visual genome annotation file",
     )
     parser.add_argument(
         "--train_caption_file",
         type=str,
-        default="/Users/miav1/Desktop/university/2023/disseration/datasets/visual genome/data/train_sg.json",
+        default="/root/visual_genome/train_sg.json",
         help="Visual genome annotation file",
     )
     parser.add_argument(
         "--image_folder",
         type=str,
-        default="/Users/miav1/Desktop/university/2023/disseration/datasets/visual genome/data/images/VG_100K",
+        default="/root/visual_genome/VG_100K",
         help="Visual genome image folder",
     )
     parser.add_argument(
         "--val_annotation_file",
         type=str,
-        default="/Users/miav1/Desktop/university/2023/disseration/datasets/visual genome/data/val_coco_style.json",
+        default="/root/visual_genome/val_coco_style.json",
         help="Visual genome annotation file",
     )
     parser.add_argument(
         "--val_caption_file",
         type=str,
-        default="/Users/miav1/Desktop/university/2023/disseration/datasets/visual genome/data/val_sg.json",
+        default="/root/visual_genome/val_sg.json",
         help="Visual genome annotation file",
     )
     # parser.add_argument(
@@ -144,7 +144,7 @@ def parse_args():
     #     help="whether to randomly flip images horizontally",
     # )
     parser.add_argument(
-        "--train_batch_size", type=int, default=1, help="Batch size (per device) for the training dataloader."
+        "--train_batch_size", type=int, default=8, help="Batch size (per device) for the training dataloader."
     )
     parser.add_argument("--num_train_epochs", type=int, default=100)
     parser.add_argument(
@@ -191,7 +191,7 @@ def parse_args():
     parser.add_argument(
         "--snr_gamma",
         type=float,
-        default=None,
+        default=5,
         help="SNR weighting gamma to be used if rebalancing the loss. Recommended value is 5.0. "
         "More details here: https://arxiv.org/abs/2303.09556.",
     )
@@ -220,7 +220,7 @@ def parse_args():
     parser.add_argument(
         "--dataloader_num_workers",
         type=int,
-        default=0,
+        default=2,
         help=(
             "Number of subprocesses to use for data loading. 0 means that the data will be loaded in the main process."
         ),
@@ -277,7 +277,7 @@ def parse_args():
     parser.add_argument(
         "--checkpointing_steps",
         type=int,
-        default=10,
+        default=1000,
         help=(
             "Save a checkpoint of the training state every X updates. These checkpoints are only suitable for resuming"
             " training using `--resume_from_checkpoint`."
@@ -299,7 +299,7 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--enable_xformers_memory_efficient_attention", action="store_true", help="Whether or not to use xformers."
+        "--enable_xformers_memory_efficient_attention", default=True, action="store_true", help="Whether or not to use xformers."
     )
     parser.add_argument("--noise_offset", type=float, default=0, help="The scale of noise offset.")
     parser.add_argument(
@@ -311,13 +311,13 @@ def parse_args():
     parser.add_argument(
         "--validation_steps",
         type=int,
-        default=1,
+        default=1000,
         help="Run validation every X steps.",
     )
     parser.add_argument(
         "--tracker_project_name",
         type=str,
-        default="layout2image-fine-tune-local",
+        default="layout2image-fine-tune-vast",
         help=(
             "The `project_name` argument passed to Accelerator.init_trackers for"
             " more information see https://huggingface.co/docs/accelerate/v0.17.0/en/package_reference/accelerator#accelerate.Accelerator"

@@ -15,26 +15,26 @@ def parse_args():
     parser.add_argument(
         "--checkpoint_dir",
         type=str,
-        default="sd-model-layout2image-finetuned/checkpoint-0-0",
+        default="/root/checkpoints/checkpoint-3-17000",
         required=False,
         help="Path to the model to be tested.",
     )
     parser.add_argument(
         "--test_annotation_file",
         type=str,
-        default="/Users/miav1/Desktop/university/2023/disseration/datasets/visual genome/data/test_coco_style.json",
+        default="/root/visual_genome/test_coco_style.json",
         help="Visual genome annotation file",
     )
     parser.add_argument(
         "--test_caption_file",
         type=str,
-        default="/Users/miav1/Desktop/university/2023/disseration/datasets/visual genome/data/test_sg.json",
+        default="/root/visual_genome/test_sg.json",
         help="Visual genome annotation file",
     )
     parser.add_argument(
         "--image_folder",
         type=str,
-        default="/Users/miav1/Desktop/university/2023/disseration/datasets/visual genome/data/images/VG_100K",
+        default="/root/visual_genome/VG_100K",
         help="Visual genome image folder",
     )
     parser.add_argument(
@@ -62,12 +62,12 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--test_batch_size", type=int, default=1, help="Batch size (per device) for the testing dataloader."
+        "--test_batch_size", type=int, default=4, help="Batch size (per device) for the testing dataloader."
     )
     parser.add_argument(
         "--dataloader_num_workers",
         type=int,
-        default=0,
+        default=2,
         help=(
             "Number of subprocesses to use for data loading. 0 means that the data will be loaded in the main process."
         ),
@@ -83,7 +83,7 @@ def parse_args():
     parser.add_argument(
         "--max_test_steps",
         type=int,
-        default=3,
+        default=20,
         help=(
             "The maximum number of test steps."
         ),
@@ -91,7 +91,7 @@ def parse_args():
     parser.add_argument(
         "--num_inference_steps",
         type=int,
-        default=1,
+        default=100,
         help=(
             "The number of steps during inferece"
         ),
@@ -110,14 +110,14 @@ def parse_args():
     parser.add_argument(
         "--tracker_project_name",
         type=str,
-        default="test-layout2image-fine-tune-local",
+        default="test-layout2image-fine-tune-vast",
         help=(
             "The `project_name` argument passed to Accelerator.init_trackers for"
             " more information see https://huggingface.co/docs/accelerate/v0.17.0/en/package_reference/accelerator#accelerate.Accelerator"
         ),
     )
     parser.add_argument(
-        "--enable_xformers_memory_efficient_attention", action="store_true", help="Whether or not to use xformers."
+        "--enable_xformers_memory_efficient_attention", default=True, action="store_true", help="Whether or not to use xformers."
     )
 
     args = parser.parse_args("") # pass empty - trick to force it to default inside notebook

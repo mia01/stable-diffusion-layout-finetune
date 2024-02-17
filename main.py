@@ -374,7 +374,7 @@ def main():
         # Potentially load in the weights and states from a previous save
         if args.resume_from_checkpoint:
             if args.resume_from_checkpoint != "latest":
-                path = os.path.basename(args.resume_from_checkpoint)
+                path = args.resume_from_checkpoint
             else:
                 # Get the most recent checkpoint
                 dirs = os.listdir(args.output_dir)
@@ -391,7 +391,7 @@ def main():
             else:
                 # TODO - load unet and layout embedder correctly and also set epoch and step
                 accelerator.print(f"Resuming from checkpoint {path}")
-                accelerator.load_state(os.path.join(args.output_dir, path))
+                accelerator.load_state(path)
                 global_step = int(path.split("-")[2])
 
                 initial_global_step = global_step
@@ -419,9 +419,6 @@ def main():
                 with accelerator.accumulate(unet):
                     save_path = os.path.join(args.output_dir, f"checkpoint-{epoch}-{global_step}")
 
-                    # TODO save the transformer for the layout data
-                    # accelerator.register_for_checkpointing(layout_embedder)
-                    accelerator.save_state(save_path)
                     # Convert images to latent space
                     latents = vae.encode(batch["pixel_values"].to(weight_dtype)).latent_dist.sample()
                     latents = latents * vae.config.scaling_factor
@@ -522,7 +519,7 @@ def main():
                     accelerator.log({"train_loss": train_loss}, step=global_step)
                     train_loss = 0.0
 
-                    if global_step % args.checkpointing_steps == 0:
+                    if global_step >= args.checkpointing_steps and global_step % args.checkpointing_steps == 0:
                         logger.info(f"Epoch: {epoch} step: {step} Saving checkpoint")
                         if accelerator.is_main_process:
                             # _before_ saving state, check if this save would set us over the `checkpoints_total_limit`
@@ -560,7 +557,15 @@ def main():
 
                 if accelerator.is_main_process:
                     if global_step % args.validation_steps == 0:
-                            
+                        logger.info(f"Epoch: {epoch} step: {step} Running validation inference")
+                        log_validation(accelerator, val_image_dataloader, {"vae":vae,
+                            "text_encoder": text_encoder,
+                            "unet": unet, 
+                            "layout_embedder": layout_embedder,
+                            "noise_scheduler": noise_scheduler,
+                            "tokenizer": tokenizer
+                        }, epoch, global_step,args.seed, args.num_inference_steps, args.output_dir) 
+                        
                         logger.info(f"Epoch: {epoch} step: {step} Running validation loss")
                         validation_step(accelerator, val_dataloader, {"vae":vae,
                             "text_encoder": text_encoder,
@@ -572,14 +577,7 @@ def main():
                         unet.train()
                         layout_embedder.train()
 
-                        logger.info(f"Epoch: {epoch} step: {step} Running validation inference")
-                        log_validation(accelerator, val_image_dataloader, {"vae":vae,
-                            "text_encoder": text_encoder,
-                            "unet": unet, 
-                            "layout_embedder": layout_embedder,
-                            "noise_scheduler": noise_scheduler,
-                            "tokenizer": tokenizer
-                        }, epoch, global_step,args.seed, args.num_inference_steps, args.output_dir) 
+                        
                     
                 if global_step >= args.max_train_steps:
                     break
